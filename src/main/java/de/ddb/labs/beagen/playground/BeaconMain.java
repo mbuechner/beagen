@@ -13,25 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.ddb.labs.beagen;
+package de.ddb.labs.beagen.playground;
 
+import de.ddb.labs.beagen.beacon.BeaconFileMaker;
 import de.ddb.labs.beagen.helper.Configuration;
-import java.io.IOException;
+import de.ddb.labs.beagen.helper.EntityManagerUtil;
 
-public class Main {
-    
+public class BeaconMain {
+
     public static void main(String[] args) throws Exception {
-        
-        try {
-            // set logging dir for Logback
-            System.setProperty("beagen.log.dir", Configuration.getInstance().getValue("beagen.log.dir"));
-            // set DB dir
-            System.setProperty("beagen.database.dir", Configuration.getInstance().getValue("beagen.database.dir"));
-        } catch (IOException e) {
-            System.err.println("FATAL: Could NOT load configuration.");
-            System.exit(-1);
-        }
-        final BeagenServer bs = new BeagenServer();
-        bs.start();
+        System.setProperty("beagen.log.dir", Configuration.getInstance().getValue("beagen.log.dir"));
+        System.setProperty("beagen.database.dir", Configuration.getInstance().getValue("beagen.database.dir"));
+        BeaconFileMaker.getInstance().run();
+        EntityManagerUtil.getInstance().shutdown();
     }
 }
