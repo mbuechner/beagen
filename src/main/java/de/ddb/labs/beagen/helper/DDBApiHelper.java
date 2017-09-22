@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.ddb.labs.beagen.api;
+package de.ddb.labs.beagen.helper;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -27,9 +27,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 
-public class ApiConnector {
+public class DDBApiHelper {
 
-    final static String API_KEY = "puzemFL3O0aRLfHBSOP3QQkSbt3YFULoTN81YHGT2dmbW3fWHHM1505380368038";
 
     public static int httpGet(final String urlStr, final String format, final File fileName) throws ConnectException, IOException {
         // HTTP Request Header
@@ -37,7 +36,7 @@ public class ApiConnector {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" + API_KEY + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.getInstance().getValue("ddb.api.key") + "\"");
                 put("Accept", format);
             }
         };
@@ -76,7 +75,7 @@ public class ApiConnector {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" + API_KEY + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.getInstance().getValue("ddb.api.key") + "\"");
                 put("Accept", format);
             }
         };
@@ -94,7 +93,7 @@ public class ApiConnector {
 
         // test if request was successful (status 200)
         if (conn.getResponseCode() != 200) {
-            throw new ConnectException("HTTP status code is " + conn.getResponseCode());
+            throw new ConnectException("HTTP status code is " + conn.getResponseCode() + " while getting data from DDB-API.");
         }
         return conn.getInputStream();
     }

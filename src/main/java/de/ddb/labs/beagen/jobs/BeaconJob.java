@@ -15,16 +15,21 @@
  */
 package de.ddb.labs.beagen.jobs;
 
-import java.util.Date;
+import de.ddb.labs.beagen.beacon.BeaconFileMaker;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BeaconJob implements Job {
 
+    private static final Logger LOG = LoggerFactory.getLogger(BeaconJob.class);
+
     @Override
-    public void execute(JobExecutionContext context)
-            throws JobExecutionException {
-        System.out.println("Server Time: " + new Date());
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+        LOG.info("Start BEACON maker job...");
+        BeaconFileMaker.getInstance().run();
+        LOG.info("BEACON maker job finished.");
     }
 }
