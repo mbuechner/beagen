@@ -1,5 +1,5 @@
 /* 
- * Copyright 2017 Michael Büchner.
+ * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,20 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.ddb.labs.beagen.helper;
+package de.ddb.labs.beagen.backend.helper;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class EntityManagerUtil {
 
     private static EntityManagerUtil instance;
     private final EntityManagerFactory EMF;
     private final EntityManager EM;
-    private static Logger LOG = LoggerFactory.getLogger(EntityManagerUtil.class);
 
     private EntityManagerUtil() {
         EMF = Persistence.createEntityManagerFactory("BeagenFile");
@@ -42,6 +40,10 @@ public class EntityManagerUtil {
 
     public EntityManager getEntityManager() {
         return EM;
+    }
+
+    public EntityTransaction getEntityTransaction() {
+        return getInstance().getEntityManager().getTransaction();
     }
 
     public void shutdown() {

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2017 Michael Büchner.
+ * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.ddb.labs.beagen.helper;
+package de.ddb.labs.beagen.backend.helper;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -27,8 +27,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 
-public class DDBApiHelper {
-
+public class DDBApi {
 
     public static int httpGet(final String urlStr, final String format, final File fileName) throws ConnectException, IOException {
         // HTTP Request Header
@@ -36,7 +35,7 @@ public class DDBApiHelper {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.getInstance().getValue("ddb.api.key") + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" + System.getProperty("beagen.ddbapikey") + "\"");
                 put("Accept", format);
             }
         };
@@ -46,15 +45,15 @@ public class DDBApiHelper {
         final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         // set properties if any do exist
-        for (String k : properties.keySet()) {
+        properties.keySet().forEach((k) -> {
             conn.setRequestProperty(k, properties.get(k));
-        }
+        });
 
         conn.connect();
 
         // test if request was successful (status 200)
         if (conn.getResponseCode() != 200) {
-            throw new ConnectException("HTTP status code is " + conn.getResponseCode());
+            throw new ConnectException("HTTP status code is " + conn.getResponseCode() + ". " + conn.getResponseMessage());
         }
         try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
             try (BufferedWriter out = new BufferedWriter(new FileWriter(fileName))) {
@@ -75,7 +74,7 @@ public class DDBApiHelper {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.getInstance().getValue("ddb.api.key") + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" + System.getProperty("beagen.ddbapikey") + "\"");
                 put("Accept", format);
             }
         };
@@ -85,9 +84,9 @@ public class DDBApiHelper {
         final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         // set properties if any do exist
-        for (String k : properties.keySet()) {
+        properties.keySet().forEach((k) -> {
             conn.setRequestProperty(k, properties.get(k));
-        }
+        });
 
         conn.connect();
 

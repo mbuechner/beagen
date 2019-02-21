@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
-<properties>
-    <entry key="beagen.database.dir">files/database/</entry>
-    <entry key="beagen.log.dir">files/log/</entry>
-    <entry key="ddb.api.key">puzemFL3O0aRLfHBSOP3QQkSbt3YFULoTN81YHGT2dmbW3fWHHM1505380368038</entry>
-</properties>
