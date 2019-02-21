@@ -9,6 +9,9 @@ A [BEACON file](http://gbv.github.io/beaconspec/beacon.html) generator for the [
 | `develop`         | `ddblabs/beagen:latest` |
 | `master`          | `ddblabs/beagen:stable` |
 
+## Screenshot
+![Screenshot of Beagen](https://github.com/mbuechner/beagen/blob/master/beagen.png "Beagen")
+
 ## Docker (Docker Hub registry)
 Pull `Beagen` from Docker Hub registry:
 ```
