@@ -1,5 +1,5 @@
 /* 
- * Copyright 2017 Michael Büchner.
+ * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.ddb.labs.beagen.beacon;
+package de.ddb.labs.beagen.backend;
 
+import de.ddb.labs.beagen.backend.data.SECTOR;
+import de.ddb.labs.beagen.backend.data.TYPE;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import de.ddb.labs.beagen.backend.data.SECTOR.SectorSerializer;
+import de.ddb.labs.beagen.backend.data.TYPE.TypeSerializer;
+import de.ddb.labs.beagen.backend.helper.Configuration;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 import javax.persistence.Basic;
 import javax.persistence.Column;
@@ -39,49 +54,58 @@ import javax.persistence.Lob;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+/**
+ * Beacon file representation
+ *
+ * @author Michael Büchner
+ */
 @Entity
 @Table(name = "BeaconFile")
-//@XmlRootElement
-//@NamedQueries({
-//    @NamedQuery(name = "Files.findAll", query = "SELECT f FROM Files f"),
-//    @NamedQuery(name = "Files.findById", query = "SELECT f FROM Files f WHERE f.id = :id"),
-//    @NamedQuery(name = "Files.findByType", query = "SELECT f FROM Files f WHERE f.type = :type"),
-//    @NamedQuery(name = "Files.findByCreated", query = "SELECT f FROM Files f WHERE f.created = :created")})
 public class BeaconFile implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    private static final Logger LOG = LoggerFactory.getLogger(BeaconFile.class);
+
     @Id
     @Basic(optional = false)
-    @NotNull
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", updatable = false, length = 4, precision = 10, nullable = false)
+    //@NotNull
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id", updatable = false, nullable = false)
+    @JsonSerialize(using = IdSerializer.class)
+    @JsonProperty("@id")
     private Long id;
 
     @Enumerated(EnumType.STRING)
     @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 32)
+    //@Size(min = 1, max = 32)
     @Column(name = "type")
-    private SECTOR type;
+    @JsonSerialize(using = TypeSerializer.class)
+    private TYPE type;
+
+    @Enumerated(EnumType.STRING)
+    @Basic(optional = false)
+    //@Size(min = 1, max = 32)
+    @Column(name = "sector")
+    @JsonSerialize(using = SectorSerializer.class)
+    private SECTOR sector;
 
     @Basic(optional = false)
-    @NotNull
     @Column(name = "created")
     @Temporal(TemporalType.TIMESTAMP)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private Date created;
 
     @Basic(optional = false)
-    @NotNull
     @Column(name = "count")
     private int count;
 
     @Basic(optional = false)
-    @NotNull
     @Lob
     @Column(name = "content")
+    @JsonIgnore
     private byte[] content;
 
     public BeaconFile() {
@@ -91,15 +115,15 @@ public class BeaconFile implements Serializable {
         this.id = id;
     }
 
-    public BeaconFile(SECTOR type, Date created, byte[] content) {
-        this.type = type;
+    public BeaconFile(SECTOR sector, Date created, byte[] content) {
+        this.sector = sector;
         this.created = created;
         this.content = content;
     }
 
-    public BeaconFile(Long id, SECTOR type, Date created, byte[] content) {
+    public BeaconFile(Long id, SECTOR sector, Date created, byte[] content) {
         this.id = id;
-        this.type = type;
+        this.sector = sector;
         this.created = created;
         this.content = content;
     }
@@ -112,12 +136,12 @@ public class BeaconFile implements Serializable {
         this.id = id;
     }
 
-    public SECTOR getType() {
-        return type;
+    public SECTOR getSector() {
+        return sector;
     }
 
-    public void setType(SECTOR type) {
-        this.type = type;
+    public void setSector(SECTOR sector) {
+        this.sector = sector;
     }
 
     public Date getCreated() {
@@ -129,7 +153,49 @@ public class BeaconFile implements Serializable {
     }
 
     public byte[] getContent() {
-        return content;
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try {
+            baos.write(getBeaconHeader().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            LOG.error("Could not serialze Beacon file header. {}", e.getMessage());
+        }
+
+        try {
+            new GZIPInputStream(new ByteArrayInputStream(content)).transferTo(baos);
+        } catch (IOException e) {
+            LOG.error("Could not decompress Beacon file from database. {}", e.getMessage(), e);
+        } finally {
+            try {
+                baos.close();
+            } catch (IOException e) {
+                //nothing
+            }
+        }
+
+        return baos.toByteArray();
+    }
+
+    @JsonIgnore
+    public InputStream getBeaconFile() throws IOException {
+        return new ByteArrayInputStream(getContent());
+    }
+
+    private String getBeaconHeader() throws IOException {
+
+        final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        sdf.setTimeZone(TimeZone.getDefault());
+        final String dt = sdf.format(getCreated());
+
+        final StringBuilder sb = new StringBuilder();
+
+        for (String s : Configuration.get().getValueAsArray("beagen.beacon.header." + type.getName().toLowerCase() + "." + sector.getShortName().toLowerCase(), "\\n")) {
+            s = s.replace("{{date}}", dt);
+            s = s.replace("{{feed}}", System.getProperty("beagen.baseurl") + "item/" + getId());
+            sb.append(s);
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     public void setContent(byte[] content) {
@@ -158,7 +224,7 @@ public class BeaconFile implements Serializable {
 
     @Override
     public String toString() {
-        return "de.ddb.pro.beacon.Files[ id=" + id + " ]";
+        return "de.ddb.labs.beacon.backend.BeaconFile[ id=" + id + " ]";
     }
 
     /**
@@ -183,16 +249,16 @@ public class BeaconFile implements Serializable {
         // Example: beacon-ddb-persons.txt, 2014-07-31-beacon-ddb-persons-archive.txt
 
         final DateFormat df = new SimpleDateFormat("YYYY-MM-dd");
-        final String entityType = "-persons";
-        final String sector = (getType() == SECTOR.ALL) ? "" : "-" + getType().getFileName();
+        final String s = (getSector() == SECTOR.ALL) ? "" : "-" + getSector().getFileName();
+        final String t = (getType() == null) ? "" : "-" + getType().getName();
         final String date = withDate ? df.format(getCreated()) + "-" : "";
-        return date + "beacon-ddb" + entityType + sector + ".txt";
+        return date + "beacon-ddb" + t + s + ".txt";
     }
 
     public boolean equals(byte[] otherContent) throws IOException {
 
-        try (final InputStream i1 = new GZIPInputStream(new ByteArrayInputStream(getContent()));
-                final InputStream i2 = new GZIPInputStream(new ByteArrayInputStream(otherContent));
+        try (final InputStream i1 = getBeaconFile();
+                final InputStream i2 = new ByteArrayInputStream(otherContent);
                 final Reader d1 = new InputStreamReader(i1, Charset.forName("UTF-8"));
                 final Reader d2 = new InputStreamReader(i2, Charset.forName("UTF-8"));
                 final BufferedReader b1 = new BufferedReader(d1);
@@ -204,7 +270,7 @@ public class BeaconFile implements Serializable {
 
                 if (l1 == null && l2 == null) {
                     return true; // they are both null (eg. buffer is empty): equal
-                } else if ((l1 == null && l2 != null) || (l1 != null && l2 == null)) {
+                } else if (l1 == null || l2 == null) {
                     return false; // one is null, the other not: not equal
                 } else if (!l1.equals(l2) && !(l1.startsWith("#") && l2.startsWith("#"))) {
                     return false; // a line which is not equal and not a comment
@@ -213,50 +279,26 @@ public class BeaconFile implements Serializable {
         }
     }
 
-    public enum SECTOR {
-        ALL("count", "all", "", "", "", ""),
-        SEC_01("count_sec_01", "sec_01", "Archiv", "der Kultursparte Archiv ", "archive", "http://ddb.vocnet.org/sparte/sparte001"),
-        SEC_02("count_sec_02", "sec_02", "Bibliothek", "der Kultursparte Bibliothek ", "library", "http://ddb.vocnet.org/sparte/sparte002"),
-        SEC_03("count_sec_03", "sec_03", "Denkmalpflege", "der Kultursparte Denkmalpflege ", "monument-protection", "http://ddb.vocnet.org/sparte/sparte003"),
-        SEC_04("count_sec_04", "sec_04", "Forschung", "der Kultursparte Forschung ", "research", "http://ddb.vocnet.org/sparte/sparte004"),
-        SEC_05("count_sec_05", "sec_05", "Mediathek", "der Kultursparte Mediathek ", "media", "http://ddb.vocnet.org/sparte/sparte005"),
-        SEC_06("count_sec_06", "sec_06", "Museum", "der Kultursparte Museum ", "museum", "http://ddb.vocnet.org/sparte/sparte006"),
-        SEC_07("count_sec_07", "sec_07", "Sonstige", "der Kultursparte Sonstige ", "other", "http://ddb.vocnet.org/sparte/sparte007");
-
-        private final String name, shortName, fileName, humanName, beaconDescName, uri;
-
-        SECTOR(String name, String shortName, String humanName, String beaconDescName, String fileName, String uri) {
-            this.uri = uri;
-            this.name = name;
-            this.shortName = shortName;
-            this.humanName = humanName;
-            this.fileName = fileName;
-            this.beaconDescName = beaconDescName;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getShortName() {
-            return shortName;
-        }
-
-        public String getBeaconDescName() {
-            return beaconDescName;
-        }
-
-        public String getHumanName() {
-            return humanName;
-        }
-
-        public String getFileName() {
-            return fileName;
-        }
-
-        public String getUri() {
-            return uri;
-        }
-
+    /**
+     * @return the type
+     */
+    public TYPE getType() {
+        return type;
     }
+
+    /**
+     * @param type the type to set
+     */
+    public void setType(TYPE type) {
+        this.type = type;
+    }
+
+    public static class IdSerializer extends JsonSerializer<Long> {
+
+        @Override
+        public void serialize(Long t, JsonGenerator jg, SerializerProvider sp) throws IOException {
+            jg.writeString(System.getProperty("beagen.baseurl") + "item/" + Long.toString(t));
+        }
+    }
+
 }

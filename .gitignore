@@ -24,3 +24,5 @@ target
 /nb-configuration.xml
 /derby.log
 files
+/src/main/resources/beagen.cfg
+/src/main/resources/.idea

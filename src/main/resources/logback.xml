@@ -16,9 +16,9 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- rollover daily -->
             <fileNamePattern>${beagen.log.dir}/beagen-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
-            <!-- keep 30 days' worth of history -->
+            <!-- keep 30 days -->
             <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>5MB</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>
