@@ -191,7 +191,10 @@ public class BeaconFile implements Serializable {
 
         for (String s : Configuration.get().getValueAsArray("beagen.beacon.header." + type.getName().toLowerCase() + "." + sector.getShortName().toLowerCase(), "\\n")) {
             s = s.replace("{{date}}", dt);
-            s = s.replace("{{feed}}", System.getProperty("beagen.baseurl") + "item/" + getId());
+            s = s.replace("{{id}}", System.getProperty("beagen.baseurl") + "item/" + getId());
+            s = s.replace("{{feed}}", System.getProperty("beagen.baseurl") + "item/"
+                    + getType().toString().toLowerCase() + "/"
+                    + getSector().toString().toLowerCase() + "/latest");
             sb.append(s);
             sb.append("\n");
         }

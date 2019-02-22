@@ -26,30 +26,30 @@ import java.io.IOException;
  */
 public enum SECTOR {
     ALL("count", "all", "Alle", "all", ""),
-    SEC_01("count_sec_01", "sec_01", "Archiv", "archive", "http://ddb.vocnet.org/sparte/sparte001"),
-    SEC_02("count_sec_02", "sec_02", "Bibliothek", "library", "http://ddb.vocnet.org/sparte/sparte002"),
-    SEC_03("count_sec_03", "sec_03", "Denkmalpflege", "monument-protection", "http://ddb.vocnet.org/sparte/sparte003"),
-    SEC_04("count_sec_04", "sec_04", "Forschung", "research", "http://ddb.vocnet.org/sparte/sparte004"),
-    SEC_05("count_sec_05", "sec_05", "Mediathek", "media", "http://ddb.vocnet.org/sparte/sparte005"),
-    SEC_06("count_sec_06", "sec_06", "Museum", "museum", "http://ddb.vocnet.org/sparte/sparte006"),
-    SEC_07("count_sec_07", "sec_07", "Sonstige", "other", "http://ddb.vocnet.org/sparte/sparte007");
+    ARCHIVE("count_sec_01", "sec_01", "Archiv", "archive", "http://ddb.vocnet.org/sparte/sparte001"),
+    LIBRARY("count_sec_02", "sec_02", "Bibliothek", "library", "http://ddb.vocnet.org/sparte/sparte002"),
+    MONUMENTPROTECTION("count_sec_03", "sec_03", "Denkmalpflege", "monument-protection", "http://ddb.vocnet.org/sparte/sparte003"),
+    RESEARCH("count_sec_04", "sec_04", "Forschung", "research", "http://ddb.vocnet.org/sparte/sparte004"),
+    MEDIA("count_sec_05", "sec_05", "Mediathek", "media", "http://ddb.vocnet.org/sparte/sparte005"),
+    MUSEUM("count_sec_06", "sec_06", "Museum", "museum", "http://ddb.vocnet.org/sparte/sparte006"),
+    OTHER("count_sec_07", "sec_07", "Sonstige", "other", "http://ddb.vocnet.org/sparte/sparte007");
 
-    private final String name, shortName, fileName, humanName, uri;
+    private final String jsonKey, abbr, fileName, humanName, uri;
 
-    private SECTOR(String name, String shortName, String humanName, String fileName, String uri) {
+    private SECTOR(String jsonKey, String abbr, String humanName, String fileName, String uri) {
         this.uri = uri;
-        this.name = name;
-        this.shortName = shortName;
+        this.jsonKey = jsonKey;
+        this.abbr = abbr;
         this.humanName = humanName;
         this.fileName = fileName;
     }
 
-    public String getName() {
-        return name;
+    public String getJsonKey() {
+        return jsonKey;
     }
 
     public String getShortName() {
-        return shortName;
+        return abbr;
     }
 
     public String getHumanName() {
