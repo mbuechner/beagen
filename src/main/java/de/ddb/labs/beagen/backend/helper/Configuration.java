@@ -25,6 +25,7 @@ import java.util.Properties;
 public class Configuration {
 
     private final static String PROPERTY_FILE = "/beagen.cfg";
+    private final static String PROPERTY_FILE_DEV = "/beagen.dev.cfg";
     private final static Configuration INSTANCE = new Configuration();
     private final static Properties PROPERTIES = new Properties();
 
@@ -34,8 +35,13 @@ public class Configuration {
     public static Configuration get() throws InvalidPropertiesFormatException, IOException {
 
         if (PROPERTIES.isEmpty()) {
-            try (final BufferedReader cfg = new BufferedReader(new InputStreamReader(Configuration.class.getResourceAsStream(PROPERTY_FILE), StandardCharsets.UTF_8));) {
+            // first try to load development properties
+            try (final BufferedReader cfg = new BufferedReader(new InputStreamReader(Configuration.class.getResourceAsStream(PROPERTY_FILE_DEV), StandardCharsets.UTF_8))) {
                 PROPERTIES.load(cfg);
+            } catch (Exception e) {
+                try (final BufferedReader cfg = new BufferedReader(new InputStreamReader(Configuration.class.getResourceAsStream(PROPERTY_FILE), StandardCharsets.UTF_8))) {
+                    PROPERTIES.load(cfg);
+                }
             }
         }
 

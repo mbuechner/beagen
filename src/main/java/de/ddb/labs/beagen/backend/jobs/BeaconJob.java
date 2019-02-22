@@ -150,7 +150,7 @@ public class BeaconJob implements Job {
                         em.persist(files_sector);
                         tx.commit();
                     } else {
-                        LOG.warn("BEACON file generated is equal to last beacon file in database. New BEACON file was NOT written to database.");
+                        LOG.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", type, sector);
                     }
                 }
                 byteStreams.get(sector).close();
@@ -175,9 +175,9 @@ public class BeaconJob implements Job {
         for (int i = 0; i <= iteration; ++i) {
             final String urltmp = URL + SEARCH.get(type) + "&offset=" + (i * ENTITYCOUNT) + "&rows=" + ENTITYCOUNT; // + "&sort=ALPHA_ASC";
             list.addAll(getEntityCounts(DDBApi.httpGet(urltmp, "application/json")));
-            LOG.info("Got {} GND-URIs and kept them in mind. {}", list.size(), urltmp);
+            LOG.debug("Got {} GND-URIs and kept them in mind. {}", list.size(), urltmp);
         }
-        LOG.info("Done.");
+        LOG.info("Got {} GND-URIs from DDB API", list.size());
         return list;
     }
 
@@ -207,10 +207,10 @@ public class BeaconJob implements Job {
                 for (SECTOR ct : SECTOR.values()) {
                     if (ct != SECTOR.ALL) {
                         try {
-                            final int sector_count = objNode.get("sectors").get(ct.getName()).asInt();
+                            final int sector_count = objNode.get("sectors").get(ct.getJsonKey()).asInt();
                             ec.addCount(ct, sector_count);
                         } catch (Exception a) {
-                            LOG.debug("Could not get {} at {}", ct.getName(), id, a);
+                            LOG.debug("Could not get {} at {}", ct.getJsonKey(), id, a);
                         }
                     }
                 }
