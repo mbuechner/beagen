@@ -117,6 +117,7 @@
         let que = typ + (typ && sec ? '&' + sec : sec);
         let url = $(location).attr('href').split('?')[0];
         url = url.substring(url.length - 1) === '/' ? url.substring(0, url.length - 1) : url;
+        url = url.endsWith('/list') ? url : url + '/list';
         url = url.endsWith('/latest') ? url.substring(0, url.length - 7) : url;
         url = url + ($('#selectorAll').prop('checked') === true ? '/latest' : '');
         $('#showBtn').attr('href', url + '?' + que);
