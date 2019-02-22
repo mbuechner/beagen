@@ -1,4 +1,4 @@
-# Beagen - A BEACON file generator for Deutsche Digitale Bibliothek
+# Beagen: A BEACON file generator for Deutsche Digitale Bibliothek
 A [BEACON file](http://gbv.github.io/beaconspec/beacon.html) generator for the [Deutsche Digitale Bibliothek](https://www.deutsche-digitale-bibliothek.de/). It's a maven project comming with [Jetty web server](http://www.eclipse.org/jetty/).
 
 - GitHub: https://github.com/Deutsche-Digitale-Bibliothek/ddblabs-beagen
