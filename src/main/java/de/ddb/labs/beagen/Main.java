@@ -44,14 +44,14 @@ public class Main {
 
     // Logger
     // private static final Logger LOG = LoggerFactory.getLogger(Main.class);
-
     // Job Scheduler
     private static Scheduler quartzScheduler;
 
     /**
      * Main entry point which starts a local http server listening on port 80.
+     *
      * @param args
-     * @throws Exception 
+     * @throws Exception
      */
     public static void main(String[] args) throws Exception {
 
@@ -142,7 +142,8 @@ public class Main {
         });
 
         app.get("/", ctx -> {
-            ctx.redirect("/list/latest?type=organisation&sector=all", 301);
+            final String prefix = ctx.req.getHeader("X-Forwarded-Prefix");
+            ctx.redirect(((prefix != null && !prefix.isEmpty()) ? prefix : "") + "/list/latest?type=organisation&sector=all", 301);
         });
 
         app.get("/list", ctx -> {
