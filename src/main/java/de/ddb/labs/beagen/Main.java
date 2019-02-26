@@ -75,6 +75,7 @@ public class Main {
             System.setProperty("beagen.ddbapikey", Configuration.get().getValue("beagen.ddbapikey"));
         }
 
+        // log env
         LOG.info("ENV set beagen.log.dir={}", System.getProperty("beagen.log.dir"));
         LOG.info("ENV set beagen.database.dir={}", System.getProperty("beagen.database.dir"));
         LOG.info("ENV set beagen.baseurl={}", System.getProperty("beagen.baseurl"));
