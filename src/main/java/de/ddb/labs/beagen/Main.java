@@ -35,6 +35,8 @@ import org.quartz.Scheduler;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -43,7 +45,8 @@ import org.quartz.impl.StdSchedulerFactory;
 public class Main {
 
     // Logger
-    // private static final Logger LOG = LoggerFactory.getLogger(Main.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Main.class);
+
     // Job Scheduler
     private static Scheduler quartzScheduler;
 
@@ -71,6 +74,12 @@ public class Main {
         if (System.getProperty("beagen.ddbapikey") == null) {
             System.setProperty("beagen.ddbapikey", Configuration.get().getValue("beagen.ddbapikey"));
         }
+
+        LOG.info("ENV set beagen.log.dir={}", System.getProperty("beagen.log.dir"));
+        LOG.info("ENV set beagen.database.dir={}", System.getProperty("beagen.database.dir"));
+        LOG.info("ENV set beagen.baseurl={}", System.getProperty("beagen.baseurl"));
+        LOG.info("ENV set beagen.cron={}", System.getProperty("beagen.cron"));
+        LOG.info("ENV set beagen.ddbapikey={}", System.getProperty("beagen.ddbapikey"));
 
         // start update job
         final JobDetail job = JobBuilder.newJob(BeaconJob.class)
