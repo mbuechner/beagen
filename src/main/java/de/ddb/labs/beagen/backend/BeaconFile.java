@@ -191,8 +191,8 @@ public class BeaconFile implements Serializable {
 
         for (String s : Configuration.get().getValueAsArray("beagen.beacon.header." + type.getName().toLowerCase() + "." + sector.getShortName().toLowerCase(), "\\n")) {
             s = s.replace("{{date}}", dt);
-            s = s.replace("{{id}}", System.getProperty("beagen.baseurl") + "item/" + getId());
-            s = s.replace("{{feed}}", System.getProperty("beagen.baseurl") + "item/"
+            s = s.replace("{{id}}", Configuration.get().getValue("beagen.baseurl") + "item/" + getId());
+            s = s.replace("{{feed}}", Configuration.get().getValue("beagen.baseurl") + "item/"
                     + getType().toString().toLowerCase() + "/"
                     + getSector().toString().toLowerCase() + "/latest");
             sb.append(s);
@@ -300,7 +300,7 @@ public class BeaconFile implements Serializable {
 
         @Override
         public void serialize(Long t, JsonGenerator jg, SerializerProvider sp) throws IOException {
-            jg.writeString(System.getProperty("beagen.baseurl") + "item/" + Long.toString(t));
+            jg.writeString(Configuration.get().getValue("beagen.baseurl") + "item/" + Long.toString(t));
         }
     }
 
