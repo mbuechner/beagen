@@ -35,7 +35,7 @@ public class DDBApi {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" + System.getProperty("beagen.ddbapikey") + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" +  Configuration.get().getValue("beagen.ddbapikey") + "\"");
                 put("Accept", format);
             }
         };
@@ -74,7 +74,7 @@ public class DDBApi {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" + System.getProperty("beagen.ddbapikey") + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" +  Configuration.get().getValue("beagen.ddbapikey") + "\"");
                 put("Accept", format);
             }
         };
