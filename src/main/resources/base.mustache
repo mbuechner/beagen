@@ -109,7 +109,7 @@
         html += '</div>';
 
         $('#alert_placeholder').html(html)
-    }
+    };
 
     $('#selectSector, #selectType, #selectorAll').change(function () {
         let typ = 'type=' + ($('#selectType').val() ? $('#selectType').val() : $('#selectType option:first').val());
@@ -125,7 +125,7 @@
 
     $('#showBtn').click(function () {
         $("#selectSector").trigger("change");
-    })
+    });
 
     $(document).ready(function () {
 
@@ -177,7 +177,7 @@
                     $.each(value1, function (key2, value2) {
 
                         if (key2 === 'created') {
-                            created = (value2.indexOf('T') == -1) ? value2 : value2.substring(0, value2.indexOf('T'));
+                            created = (value2.indexOf('T') === -1) ? value2 : value2.substring(0, value2.indexOf('T'));
                         } else if (key2 === 'count') {
                             count = value2;
                         }

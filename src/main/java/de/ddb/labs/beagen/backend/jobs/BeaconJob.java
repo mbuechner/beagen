@@ -98,15 +98,15 @@ public class BeaconJob implements Job {
             }
 
             final List<EntityCounts> data = getDataFromDdbApi(type);
-            
+
             LOG.info("Start generating Beacon files of type {}...", type);
 
             for (final Iterator<EntityCounts> it = data.iterator(); it.hasNext();) {
 
                 final EntityCounts ex = it.next();
-                
+
                 for (SECTOR sector : sectors) {
-                                        
+
                     if (ex.hasCount(sector)) {
 
                         String id = ex.getId();
@@ -127,7 +127,7 @@ public class BeaconJob implements Job {
                     }
                 }
             }
-            
+
             LOG.info("Done generating Beacon files of type {}.", type);
 
             for (SECTOR sector : sectors) {
