@@ -60,11 +60,11 @@ services:
     volumes:
       - beagen:/home/beagen/files
     environment:
-      - beagen.baseurl=https://example.com/beagen/
-      - beagen.cron=0 0 12 * * ?
-      - beagen.database.dir=/home/beagen/files/database/
-      - beagen.log.dir=/home/beagen/files/log/
-      - beagen.ddbapikey=putinyourddbapikeyhere
+      - "beagen.baseurl=https://example.com/beagen/"
+      - "beagen.cron=0 0 12 * * ?"
+      - "beagen.database.dir=/home/beagen/files/database/"
+      - "beagen.log.dir=/home/beagen/files/log/"
+      - "beagen.ddbapikey=putinyourddbapikeyhere"
     ports:
       - "80"
     restart: always
