@@ -42,8 +42,6 @@ import org.quartz.impl.StdSchedulerFactory;
  */
 public class Main {
 
-    // Logger
-    // private static final Logger LOG = LoggerFactory.getLogger(Main.class);
     // Job Scheduler
     private static Scheduler quartzScheduler;
 
@@ -55,12 +53,19 @@ public class Main {
      */
     public static void main(String[] args) throws Exception {
 
-        // set env
+        // set System properties for pathes
+        // get env and overwrite default configuration
         if (System.getenv("beagen.log.dir") != null) {
+            System.setProperty("beagen.log.dir", System.getenv("beagen.log.dir"));
             Configuration.get().setValue("beagen.log.dir", System.getenv("beagen.log.dir"));
+        } else {
+            System.setProperty("beagen.log.dir", Configuration.get().getValue("beagen.log.dir"));
         }
         if (System.getenv("beagen.database.dir") != null) {
+            System.setProperty("beagen.database.dir", System.getenv("beagen.database.dir"));
             Configuration.get().setValue("beagen.database.dir", System.getenv("beagen.database.dir"));
+        } else {
+            System.setProperty("beagen.database.dir", Configuration.get().getValue("beagen.database.dir"));
         }
         if (System.getenv("beagen.baseurl") != null) {
             Configuration.get().setValue("beagen.baseurl", System.getenv("beagen.baseurl"));
@@ -71,6 +76,12 @@ public class Main {
         if (System.getenv("beagen.ddbapikey") != null) {
             Configuration.get().setValue("beagen.ddbapikey", System.getenv("beagen.ddbapikey"));
         }
+
+        System.out.println("beagen.log.dir=" + Configuration.get().getValue("beagen.log.dir"));
+        System.out.println("beagen.database.dir=" + Configuration.get().getValue("beagen.database.dir"));
+        System.out.println("beagen.baseurl=" + Configuration.get().getValue("beagen.baseurl"));
+        System.out.println("beagen.cron=" + Configuration.get().getValue("beagen.cron"));
+        System.out.println("beagen.ddbapikey=" + Configuration.get().getValue("beagen.ddbapikey"));
 
         // start update job
         final JobDetail job = JobBuilder.newJob(BeaconJob.class)
