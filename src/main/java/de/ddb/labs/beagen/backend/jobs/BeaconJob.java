@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,10 @@ import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ *
+ * @author Michael Büchner
+ */
 @DisallowConcurrentExecution
 public class BeaconJob implements Job {
 

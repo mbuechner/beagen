@@ -1,5 +1,5 @@
-/*
- * Copyright 2019 buechner.
+/* 
+ * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import java.io.IOException;
 
 /**
  *
- * @author buechner
+ * @author Michael Büchner
  */
 public enum TYPE {
     ORGANISATION("Organisation"),
@@ -64,7 +64,7 @@ public enum TYPE {
 
                 jg.writeFieldName("abbr");
                 jg.writeString(name);
-                
+
                 jg.writeFieldName("name");
                 jg.writeString(name);
             }

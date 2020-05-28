@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
 
+/**
+ *
+ * @author Michael Büchner
+ */
 public class EntityManagerUtil {
 
     private static EntityManagerUtil instance;
