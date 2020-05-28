@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 
+/**
+ *
+ * @author Michael Büchner
+ */
 public class DDBApi {
 
     public static int httpGet(final String urlStr, final String format, final File fileName) throws ConnectException, IOException {
@@ -35,7 +39,7 @@ public class DDBApi {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" +  Configuration.get().getValue("beagen.ddbapikey") + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.get().getValue("beagen.ddbapikey") + "\"");
                 put("Accept", format);
             }
         };
@@ -74,7 +78,7 @@ public class DDBApi {
             private static final long serialVersionUID = 1L;
 
             {
-                put("Authorization", "OAuth oauth_consumer_key=\"" +  Configuration.get().getValue("beagen.ddbapikey") + "\"");
+                put("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.get().getValue("beagen.ddbapikey") + "\"");
                 put("Accept", format);
             }
         };

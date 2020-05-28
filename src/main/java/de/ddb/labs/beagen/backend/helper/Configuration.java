@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
 
+/**
+ *
+ * @author Michael Büchner
+ */
 public class Configuration {
 
     private final static String PROPERTY_FILE = "/beagen.cfg";
