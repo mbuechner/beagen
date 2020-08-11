@@ -1,3 +1,4 @@
+![Java CI with Maven](https://github.com/mbuechner/beagen/workflows/Java%20CI%20with%20Maven/badge.svg) ![Docker](https://github.com/mbuechner/beagen/workflows/Docker/badge.svg)
 # Beagen: A Beacon file generator for Deutsche Digitale Bibliothek
 A Beacon file generator for [Deutsche Digitale Bibliothek](https://www.deutsche-digitale-bibliothek.de/). For more information about Beacon files see [this draft](http://gbv.github.io/beaconspec/beacon.html).
 
