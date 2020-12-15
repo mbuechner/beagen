@@ -1,4 +1,4 @@
-FROM maven:3-openjdk-16-slim
+FROM maven:3-openjdk-16-slim AS MAVEN_CHAIN
 COPY pom.xml /tmp/
 COPY src /tmp/src/
 WORKDIR /tmp/
