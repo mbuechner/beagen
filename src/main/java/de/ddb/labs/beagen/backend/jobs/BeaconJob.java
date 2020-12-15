@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
@@ -105,7 +104,16 @@ public class BeaconJob implements Job {
 
             LOG.info("Start generating Beacon files of type {}...", type);
 
+            int count = 0;
+
             for (final Iterator<EntityCounts> it = data.iterator(); it.hasNext();) {
+
+                if (count == data.size() - 1) {
+                    LOG.info("{} data processed: {}/{}", type, (count + 1), data.size());
+                } else if (count % 10000 == 0) {
+                    LOG.info("{} data processed: {}/{}", type, count, data.size());
+                }
+                count++;
 
                 final EntityCounts ex = it.next();
 
@@ -122,6 +130,7 @@ public class BeaconJob implements Job {
                             id = EntityFacts.getGndId(ex.getVariantIds().get(0));
                         } else {
                             LOG.warn("Could not get any GND-ID of {}. That should never happen!", id);
+                            continue;
                         }
 
                         counts.put(sector, counts.get(sector) + 1);
@@ -159,11 +168,10 @@ public class BeaconJob implements Job {
                 }
                 byteStreams.get(sector).close();
             }
-        } catch (IOException | PersistenceException ex) {
-            LOG.error("Error while processing entity data.", ex);
-        } catch (ParseException ex) {
-            java.util.logging.Logger.getLogger(BeaconJob.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ParseException | IOException | PersistenceException ex) {
+            LOG.error("Error while processing entity data. {}", ex.getMessage());
         }
+
         LOG.info("BEACON maker job finished.");
     }
 
@@ -176,9 +184,21 @@ public class BeaconJob implements Job {
 
         final List<EntityCounts> list = new ArrayList<>();
 
-        for (int i = 0; i <= iteration; ++i) {
+        for (int i = 0; i <= iteration; i++) {
+
+            if (i % 10 == 0) {
+                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), searchCount);
+            }
+
             final String urltmp = URL + SEARCH.get(type) + "&offset=" + (i * ENTITYCOUNT) + "&rows=" + ENTITYCOUNT; // + "&sort=ALPHA_ASC";
+
             list.addAll(getEntityCounts(DDBApi.httpGet(urltmp, "application/json")));
+
+            // last logging
+            if (i == iteration) {
+                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), searchCount);
+            }
+
             LOG.debug("Got {} GND-URIs and kept them in mind. {}", list.size(), urltmp);
         }
         LOG.info("Got {} GND-URIs from DDB API", list.size());
@@ -199,6 +219,8 @@ public class BeaconJob implements Job {
         if (resultsNode.isArray()) {
             for (final JsonNode objNode : resultsNode) {
                 final String id = objNode.get("id").asText();
+                LOG.debug("Processing {}...", id);
+
                 final int count = objNode.get("count").asInt();
 
                 final EntityCounts ec = new EntityCounts(id, count);
@@ -211,10 +233,14 @@ public class BeaconJob implements Job {
                 for (SECTOR ct : SECTOR.values()) {
                     if (ct != SECTOR.ALL) {
                         try {
-                            final int sector_count = objNode.get("sectors").get(ct.getJsonKey()).asInt();
-                            ec.addCount(ct, sector_count);
+                            if (objNode.get("sectors").has(ct.getJsonKey()) && objNode.get("sectors").get(ct.getJsonKey()).isInt()) {
+                                final int sector_count = objNode.get("sectors").get(ct.getJsonKey()).asInt();
+
+                                LOG.debug("Adding: {} - {}", ct, sector_count);
+                                ec.addCount(ct, sector_count);
+                            }
                         } catch (Exception a) {
-                            LOG.debug("Could not get {} at {}", ct.getJsonKey(), id, a);
+                            LOG.warn("Could not get or save {} at {}. {}", ct.getJsonKey(), id, a.getMessage());
                         }
                     }
                 }
@@ -250,7 +276,7 @@ public class BeaconJob implements Job {
             return counts.get(ct);
         }
 
-        public int addCount(SECTOR ct, int value) {
+        public Integer addCount(SECTOR ct, int value) {
             return counts.put(ct, value);
         }
 

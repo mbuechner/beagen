@@ -1,10 +1,10 @@
-FROM maven:3-jdk-12-alpine AS MAVEN_CHAIN
+FROM maven:3-openjdk-16-slim
 COPY pom.xml /tmp/
 COPY src /tmp/src/
 WORKDIR /tmp/
 RUN mvn package
 
-FROM openjdk:12-alpine3.9
+FROM openjdk:16-alpine
 RUN mkdir /home/beagen
 COPY --from=MAVEN_CHAIN /tmp/target/beagen.jar /home/beagen/beagen.jar
 WORKDIR /home/beagen/
