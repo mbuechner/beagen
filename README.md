@@ -25,13 +25,13 @@ mbuechner/beagen
 *Note:* `beagen.database.dir` and `beagen.log.dir` should be direcories inside a Docker volume. If not all data will be lost on restart.
 
 ## Environment variables
-| Variable            | Description                                                                                                                                                                    |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| beagen.baseurl      | Base url of Beagen application. Mainly used to build URLs in the Beacon file headers.                                                                                          |
-| beagen.cron         | How often should the Job run and check for updates at DDB ([Quartz documentation](http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html)).       |
-| beagen.database.dir | Directory for the database files ([Apache Derby](https://db.apache.org/derby/))                                                                                                |
-| beagen.log.dir      | Directory for all logging files (See [configuration](https://github.com/mbuechner/beagen/blob/master/src/main/resources/logback.xml) of [Logback](https://logback.qos.ch/)).   |
-| beagen.ddbapikey    | API key of Deutsche Digitale Bibliothek ([request](https://www.deutsche-digitale-bibliothek.de/user/apikey) and [documentation](https://api.deutsche-digitale-bibliothek.de/)) |
+| Variable            | Description                                                                                                                                                                       |
+|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| beagen.baseurl      | Base url of Beagen application. Mainly used to build URLs in the Beacon file headers.                                                                                             |
+| beagen.cron         | How often should the Job run and check for updates at DDB ([Quartz documentation](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)). |
+| beagen.database.dir | Directory for the database files ([Apache Derby](https://db.apache.org/derby/))                                                                                                   |
+| beagen.log.dir      | Directory for all logging files (See [configuration](https://github.com/mbuechner/beagen/blob/master/src/main/resources/logback.xml) of [Logback](https://logback.qos.ch/)).      |
+| beagen.ddbapikey    | API key of Deutsche Digitale Bibliothek ([request](https://www.deutsche-digitale-bibliothek.de/user/apikey) and [documentation](https://api.deutsche-digitale-bibliothek.de/))    |
 
 ## Container build
 If you like to build the Docker container by yourself, please follow these steps. (Not necessary if you use the [pre-build container at Docker Hub](https://hub.docker.com/r/mbuechner/beagen/).)

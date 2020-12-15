@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019, 2020 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,10 @@
  */
 package de.ddb.labs.beagen.backend.helper;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.util.concurrent.TimeUnit;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -28,7 +27,13 @@ import org.slf4j.LoggerFactory;
  */
 public class EntityFacts {
 
-    private final static String EF_URL = "http://hub.culturegraph.org/entityfacts/";
+    private final static String EF_URL = "https://hub.culturegraph.org/entityfacts/";
+    private final static String EF_URL_SSL = "https://hub.culturegraph.org/entityfacts/";
+    private final static OkHttpClient client = new OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .writeTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build();
     // Logger
     private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(EntityFacts.class);
 
@@ -41,24 +46,23 @@ public class EntityFacts {
     public static String getGndId(String id) {
 
         try {
-            final URL url = new URL(EF_URL + cleanId(id));
-            final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            final ObjectMapper m = new ObjectMapper();
-            final JsonNode resultsNode = m.readTree(conn.getInputStream()).get("@id");
-            final String result = cleanId(resultsNode.asText());
-            conn.disconnect();
-            return result;
-        } catch (IOException ex) {
+            final Request request = new Request.Builder()
+                    .url(EF_URL_SSL + id)
+                    .head()
+                    .build();
+            final Response response = client.newCall(request).execute();
+            return cleanEfId(response.request().url().toString());
+        } catch (Exception ex) {
             LOG.warn("Could not get data from Entity Facts. {}", ex.getMessage());
             return id;
         }
     }
 
-    private static String cleanId(String id) {
-        if (id.startsWith("http://d-nb.info/gnd/")) {
-            id = id.substring(21);
-        } else if (id.startsWith("https://d-nb.info/gnd/")) {
-            id = id.substring(22);
+    private static String cleanEfId(String id) {
+        if (id.startsWith(EF_URL)) {
+            id = id.substring(EF_URL.length());
+        } else if (id.startsWith(EF_URL_SSL)) {
+            id = id.substring(EF_URL_SSL.length());
         }
         return id;
     }
