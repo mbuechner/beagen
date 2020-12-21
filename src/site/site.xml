@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/DECORATION/1.8.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/DECORATION/1.8.0 http://maven.apache.org/xsd/decoration-1.8.0.xsd">
+    <!--    <bannerLeft>
+        <name>A Maven Site using Twitter Bootstrap</name>
+        <src>http://html5-slides-template.googlecode.com/git/images/akquinet-logo-small.png</src>
+        <href>http://www.akquinet.de/en</href>
+    </bannerLeft>-->
+    <skin>
+        <groupId>com.bernardomg.maven.skins</groupId>
+        <artifactId>docs-maven-skin</artifactId>
+        <version>2.0.8</version>
+    </skin>
+    <custom>
+        <skinConfig>
+            <keywords>Maven Site, fix, HTML5</keywords>
+            <descriptionUrl>Check the documentation for ${projectName}</descriptionUrl>
+            <twitterSite>@BernardoMartG</twitterSite>
+            <topNav>
+                <menu>Documentation</menu>
+                <menu>Info and reports</menu>
+            </topNav>
+            <bottomNav>
+                <menu>General Info</menu>
+                <menu>Code</menu>
+                <menu>Releases</menu>
+            </bottomNav>
+            <iconNav>
+                <menu>Icons</menu>
+            </iconNav>
+        </skinConfig>
+    </custom>
+    <body>
+        <menu name="General Info" inherit="top">
+            <item name="Project Information" href="./project-info.html" />
+        </menu>
+        <menu name="Documentation" inherit="bottom">
+            <item name="Dependencies" href="./dependencies.html" />
+            <item name="Dependency Information" href="./dependency-info.html" />
+            <item name="Issue Management" href="./issue-management.html" />
+            <item name="Licenses" href="./licenses.html" />
+            <item name="Plugin Management" href="./plugin-management.html" />
+            <item name="Plugins" href="./plugins.html" />
+            <item name="Source Code Management" href="./scm.html" />
+            <item name="Summary" href="./summary.html" />
+            <item name="Team" href="./team.html" />
+        </menu>
+        <menu name="Info and reports" inherit="bottom">
+            <item name="Project Information" href="./project-info.html" />
+            <item name="Reports" href="./reports.html" />
+        </menu>
+        <menu name="Code" inherit="bottom">
+            <item name="Source Code Management" href="${project.scm.url}">
+                <description>GitHub</description>
+            </item>
+            <item name="Issues" href="${project.scm.url}/issues">
+                <description>GitHub</description>
+            </item>
+        </menu>
+        <menu name="Releases" inherit="bottom">
+            <item name="GitHub" href="${project.scm.url}/releases" />
+        </menu>
+        <menu name="Icons" inherit="bottom">
+            <item name="Github" img="github" href="${project.scm.url}" />
+        </menu>
+    </body>
+</project>

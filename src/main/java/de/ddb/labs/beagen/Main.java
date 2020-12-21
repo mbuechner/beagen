@@ -172,28 +172,29 @@ public class Main {
             return;
         }
 
-        TYPE type;
+        TYPE type = null;
         try {
             final String t = ctx.queryParam("type") == null ? "organisation" : ctx.queryParam("type");
+            if (t == null) {
+                throw new IllegalArgumentException();
+            }
             type = TYPE.valueOf(t.toUpperCase());
         } catch (Exception e) {
             throw new BadRequestResponse("Kein gültiger Typ");
         }
 
-        SECTOR sector;
+        SECTOR sector = null;
         try {
             final String s = ctx.queryParam("sector") == null ? "all" : ctx.queryParam("sector");
+            if (s == null) {
+                throw new IllegalArgumentException();
+            }
             sector = SECTOR.valueOf(s.toUpperCase());
         } catch (Exception e) {
             throw new BadRequestResponse("Keine gültige Kultursparte");
         }
 
-        if (type != null || sector != null) {
-            ctx.json(BeaconFileController.getBeaconFiles(type, sector, latest));
-
-        } else {
-            ctx.json(BeaconFileController.getBeaconFiles(null, latest));
-        }
+        ctx.json(BeaconFileController.getBeaconFiles(type, sector, latest));
     }
 
     private static boolean deliverHtml(String accept) {

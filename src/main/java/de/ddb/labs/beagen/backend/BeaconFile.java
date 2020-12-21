@@ -39,6 +39,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
@@ -117,15 +118,15 @@ public class BeaconFile implements Serializable {
 
     public BeaconFile(SECTOR sector, Date created, byte[] content) {
         this.sector = sector;
-        this.created = created;
-        this.content = content;
+        this.created = new Date(created.getTime());
+        this.content = Arrays.copyOf(content, content.length);
     }
 
     public BeaconFile(Long id, SECTOR sector, Date created, byte[] content) {
         this.id = id;
         this.sector = sector;
-        this.created = created;
-        this.content = content;
+        this.created = new Date(created.getTime());
+        this.content = Arrays.copyOf(content, content.length);
     }
 
     public Long getId() {
@@ -145,11 +146,11 @@ public class BeaconFile implements Serializable {
     }
 
     public Date getCreated() {
-        return created;
+        return new Date(created.getTime());
     }
 
     public void setCreated(Date created) {
-        this.created = created;
+        this.created = new Date(created.getTime());
     }
 
     public byte[] getContent() {
@@ -202,7 +203,7 @@ public class BeaconFile implements Serializable {
     }
 
     public void setContent(byte[] content) {
-        this.content = content;
+        this.content = Arrays.copyOf(content, content.length);
     }
 
     @Override

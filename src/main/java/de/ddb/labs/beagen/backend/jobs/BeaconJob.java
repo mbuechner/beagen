@@ -122,12 +122,18 @@ public class BeaconJob implements Job {
                     if (ex.hasCount(sector)) {
 
                         String id = ex.getId();
-                        if (id.startsWith("http://d-nb.info/gnd/")) {
+                        if (id.toLowerCase().startsWith("http://d-nb.info/gnd/")) {
                             id = id.substring(21);
-                        } else if (id.startsWith("https://d-nb.info/gnd/")) {
+                        } else if (id.toLowerCase().startsWith("https://d-nb.info/gnd/")) {
                             id = id.substring(22);
-                        } else if (id.length() == 32 && !ex.getVariantIds().isEmpty()) {
-                            id = EntityFacts.getGndId(ex.getVariantIds().get(0));
+                        } else if (id.length() == 32
+                                && !ex.getVariantIds().isEmpty()
+                                && ex.getVariantIds().get(0).toLowerCase().startsWith("http://d-nb.info/gnd/")) {
+                            id = EntityFacts.getGndId(ex.getVariantIds().get(0).substring(21));
+                        } else if (id.length() == 32
+                                && !ex.getVariantIds().isEmpty()
+                                && ex.getVariantIds().get(0).toLowerCase().startsWith("https://d-nb.info/gnd/")) {
+                            id = EntityFacts.getGndId(ex.getVariantIds().get(0).substring(22));
                         } else {
                             LOG.warn("Could not get any GND-ID of {}. That should never happen!", id);
                             continue;
@@ -180,7 +186,7 @@ public class BeaconJob implements Job {
         final int searchCount = getNumberOfResults(DDBApi.httpGet(URL + SEARCH.get(type), "application/json"));
 
         // sets are limited to 1000 per search query
-        final int iteration = (int) Math.ceil(searchCount / ENTITYCOUNT);
+        final int iteration = (int) Math.ceil((double) searchCount / (double) ENTITYCOUNT);
 
         final List<EntityCounts> list = new ArrayList<>();
 
@@ -250,7 +256,7 @@ public class BeaconJob implements Job {
         return list;
     }
 
-    private class EntityCounts {
+    private static class EntityCounts {
 
         private final String id;
         private List<String> variantIds;
