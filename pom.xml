@@ -3,10 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.ddb.labs</groupId>
     <artifactId>beagen</artifactId>
-    <version>1.2</version>
+    <version>1.2.2</version>
     <packaging>jar</packaging>
     <name>Beagen</name>
-    <description>Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</description>
+    <description>Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek.</description>
     <url>https://mbuechner.github.io/beagen/</url>
     <licenses>
         <license>

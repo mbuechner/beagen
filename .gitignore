@@ -26,3 +26,4 @@ target
 files
 /src/main/resources/beagen.dev.cfg
 /src/main/resources/.idea
+/src/main/java/de/ddb/labs/beagen/backend/helper/TestMain.java
