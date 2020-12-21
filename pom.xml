@@ -110,9 +110,30 @@
             <version>4.9.0</version>
         </dependency>
     </dependencies>
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.1.4</version>
+            </plugin>
+        </plugins>
+    </reporting>
     <build>
         <finalName>beagen</finalName>        
         <plugins>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.1.4</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs</artifactId>
+                        <version>4.2.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -144,6 +165,13 @@
                 <configuration>
                     <outputDirectory>${basedir}/docs</outputDirectory>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.bernardomg.maven.skins</groupId>
+                        <artifactId>docs-maven-skin</artifactId>
+                        <version>2.0.8</version>
+                    </dependency> 
+                </dependencies>           
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -47,6 +47,10 @@ public class Configuration {
                 try (final BufferedReader cfg = new BufferedReader(new InputStreamReader(Configuration.class.getResourceAsStream(PROPERTY_FILE), StandardCharsets.UTF_8))) {
                     PROPERTIES.load(cfg);
                     System.out.println("Configuration loaded from " + PROPERTY_FILE);
+                } catch (Exception ex) {
+                    System.err.println("Could NOT load configuration from "
+                            + PROPERTY_FILE_DEV + " (" + e.getMessage() + ") and "
+                            + PROPERTY_FILE + " (" + ex.getMessage() + ").");
                 }
             }
         }
@@ -55,8 +59,7 @@ public class Configuration {
     }
 
     public String[] getValueAsArray(String key, String split) {
-        final String[] r = PROPERTIES.getProperty(key).split(split);
-        return r == null ? new String[0] : r;
+        return PROPERTIES.getProperty(key).split(split);
     }
 
     public String getValue(String key) {

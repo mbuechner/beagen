@@ -48,10 +48,9 @@ public class DDBApi {
             final Response response = client.newCall(request).execute();
 
             // test if request was successful (status 200)
-            if (response.code() != 200) {
-                throw new ConnectException("HTTP status code for " + urlStr + " is " + response.code() + ". " + (response.body() != null ? response.body().string() : ""));
+            if (!response.isSuccessful()) {
+                throw new ConnectException("HTTP status code for " + urlStr + " is " + response.code() + ". " + response.body().string());
             }
-
             return response.body().byteStream();
         } catch (Exception ex) {
             LOG.warn("Could not get data from Entity Facts for {}. {}", urlStr, ex.getMessage());
