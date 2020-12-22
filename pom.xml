@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.ddb.labs</groupId>
     <artifactId>beagen</artifactId>
-    <version>1.2.2</version>
+    <version>1.2.3</version>
     <packaging>jar</packaging>
     <name>Beagen</name>
     <description>Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek.</description>
@@ -120,7 +120,13 @@
         </plugins>
     </reporting>
     <build>
-        <finalName>beagen</finalName>        
+        <finalName>beagen</finalName>    
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>    
         <plugins>
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
