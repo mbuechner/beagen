@@ -249,10 +249,10 @@ public class BeaconFile implements Serializable {
         // Format: {date}-beacon-ddb-{entityType}-{sector}.txt
         // entityType: 'person', 'organization'
         // - sector: only it there's a sector like 'archive', 'libarary', 'media'
-        // - date: only if beacon is not the newest, YYYY-MM-DD
+        // - date: only if beacon is not the newest, yyyy-MM-DD
         // Example: beacon-ddb-persons.txt, 2014-07-31-beacon-ddb-persons-archive.txt
 
-        final DateFormat df = new SimpleDateFormat("YYYY-MM-dd");
+        final DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
         final String s = (getSector() == SECTOR.ALL) ? "" : "-" + getSector().getFileName();
         final String t = (getType() == null) ? "" : "-" + getType().getName();
         final String date = withDate ? df.format(getCreated()) + "-" : "";

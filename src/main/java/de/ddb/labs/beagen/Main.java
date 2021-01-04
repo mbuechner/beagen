@@ -41,9 +41,15 @@ import org.quartz.impl.StdSchedulerFactory;
  */
 public class Main {
 
+    // Configuration
+    private static final String BEAGEN_LOG_DIR = "beagen.log.dir";
+    private static final String BEAGEN_DATABASE_DIR = "beagen.database.dir";
+    private static final String BEAGEN_BASEURL = "beagen.baseurl";
+    private static final String BEAGEN_CRON = "beagen.cron";
+    private static final String BEAGEN_DDBAPIKEY = "beagen.ddbapikey";
     // Job Scheduler
     private static Scheduler quartzScheduler;
-
+    
     /**
      * Main entry point which starts a local http server listening on port 80.
      *
@@ -54,33 +60,33 @@ public class Main {
 
         // set System properties for pathes
         // get env and overwrite default configuration
-        if (System.getenv("beagen.log.dir") != null) {
-            System.setProperty("beagen.log.dir", System.getenv("beagen.log.dir"));
-            Configuration.get().setValue("beagen.log.dir", System.getenv("beagen.log.dir"));
+        if (System.getenv(BEAGEN_LOG_DIR) != null) {
+            System.setProperty(BEAGEN_LOG_DIR, System.getenv(BEAGEN_LOG_DIR));
+            Configuration.get().setValue(BEAGEN_LOG_DIR, System.getenv(BEAGEN_LOG_DIR));
         } else {
-            System.setProperty("beagen.log.dir", Configuration.get().getValue("beagen.log.dir"));
+            System.setProperty(BEAGEN_LOG_DIR, Configuration.get().getValue(BEAGEN_LOG_DIR));
         }
-        if (System.getenv("beagen.database.dir") != null) {
-            System.setProperty("beagen.database.dir", System.getenv("beagen.database.dir"));
-            Configuration.get().setValue("beagen.database.dir", System.getenv("beagen.database.dir"));
+        if (System.getenv(BEAGEN_DATABASE_DIR) != null) {
+            System.setProperty(BEAGEN_DATABASE_DIR, System.getenv(BEAGEN_DATABASE_DIR));
+            Configuration.get().setValue(BEAGEN_DATABASE_DIR, System.getenv(BEAGEN_DATABASE_DIR));
         } else {
-            System.setProperty("beagen.database.dir", Configuration.get().getValue("beagen.database.dir"));
+            System.setProperty(BEAGEN_DATABASE_DIR, Configuration.get().getValue(BEAGEN_DATABASE_DIR));
         }
-        if (System.getenv("beagen.baseurl") != null) {
-            Configuration.get().setValue("beagen.baseurl", System.getenv("beagen.baseurl"));
+        if (System.getenv(BEAGEN_BASEURL) != null) {
+            Configuration.get().setValue(BEAGEN_BASEURL, System.getenv(BEAGEN_BASEURL));
         }
-        if (System.getenv("beagen.cron") != null) {
-            Configuration.get().setValue("beagen.cron", System.getenv("beagen.cron"));
+        if (System.getenv(BEAGEN_CRON) != null) {
+            Configuration.get().setValue(BEAGEN_CRON, System.getenv(BEAGEN_CRON));
         }
-        if (System.getenv("beagen.ddbapikey") != null) {
-            Configuration.get().setValue("beagen.ddbapikey", System.getenv("beagen.ddbapikey"));
+        if (System.getenv(BEAGEN_DDBAPIKEY) != null) {
+            Configuration.get().setValue(BEAGEN_DDBAPIKEY, System.getenv(BEAGEN_DDBAPIKEY));
         }
 
-        System.out.println("beagen.log.dir=" + Configuration.get().getValue("beagen.log.dir"));
-        System.out.println("beagen.database.dir=" + Configuration.get().getValue("beagen.database.dir"));
-        System.out.println("beagen.baseurl=" + Configuration.get().getValue("beagen.baseurl"));
-        System.out.println("beagen.cron=" + Configuration.get().getValue("beagen.cron"));
-        System.out.println("beagen.ddbapikey=" + Configuration.get().getValue("beagen.ddbapikey"));
+        System.out.println(BEAGEN_LOG_DIR + "=" + Configuration.get().getValue(BEAGEN_LOG_DIR));
+        System.out.println(BEAGEN_DATABASE_DIR + "=" + Configuration.get().getValue(BEAGEN_DATABASE_DIR));
+        System.out.println(BEAGEN_BASEURL + "=" + Configuration.get().getValue(BEAGEN_BASEURL));
+        System.out.println(BEAGEN_CRON + "=" + Configuration.get().getValue(BEAGEN_CRON));
+        System.out.println(BEAGEN_DDBAPIKEY + "=" + Configuration.get().getValue(BEAGEN_DDBAPIKEY));
 
         // start update job
         final JobDetail job = JobBuilder.newJob(BeaconJob.class)
@@ -90,7 +96,7 @@ public class Main {
         final Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity("crontrigger", "crongroup")
                 .startNow()
-                .withSchedule(CronScheduleBuilder.cronSchedule(Configuration.get().getValue("beagen.cron")))
+                .withSchedule(CronScheduleBuilder.cronSchedule(Configuration.get().getValue(BEAGEN_CRON)))
                 .build();
 
         quartzScheduler = new StdSchedulerFactory().getScheduler();

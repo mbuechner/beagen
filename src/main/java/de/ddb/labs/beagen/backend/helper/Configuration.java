@@ -28,10 +28,10 @@ import java.util.Properties;
  */
 public class Configuration {
 
-    private final static String PROPERTY_FILE = "/beagen.cfg";
-    private final static String PROPERTY_FILE_DEV = "/beagen.dev.cfg";
-    private final static Configuration INSTANCE = new Configuration();
-    private final static Properties PROPERTIES = new Properties();
+    private static final String PROPERTY_FILE = "/beagen.cfg";
+    private static final String PROPERTY_FILE_DEV = "/beagen.dev.cfg";
+    private static final Configuration INSTANCE = new Configuration();
+    private static final Properties PROPERTIES = new Properties();
 
     private Configuration() {
     }

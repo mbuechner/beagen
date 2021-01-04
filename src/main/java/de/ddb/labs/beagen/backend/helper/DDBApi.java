@@ -32,7 +32,7 @@ public class DDBApi {
 
     // Logger
     private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(DDBApi.class);
-    private final static OkHttpClient client = new OkHttpClient.Builder()
+    private static final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .writeTimeout(5, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)

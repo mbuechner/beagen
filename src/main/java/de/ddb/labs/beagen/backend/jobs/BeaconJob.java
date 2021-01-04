@@ -29,13 +29,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
@@ -55,16 +55,16 @@ import org.slf4j.LoggerFactory;
 public class BeaconJob implements Job {
 
     // URL of DDB server with dataset ID
-    private final static String URL = "https://api.deutsche-digitale-bibliothek.de";
-    private final static Map<TYPE, String> SEARCH = new HashMap<>() {
-        {
-            put(TYPE.PERSON, "/search/person?query=count:*&sort=count_desc");
-            put(TYPE.ORGANISATION, "/search/organization?query=count:*&sort=count_desc");
+    private static final String URL = "https://api.deutsche-digitale-bibliothek.de";
+    private static final EnumMap<TYPE, String> SEARCH = new EnumMap<>(TYPE.class);
 
-        }
-    };
+    static {
+        SEARCH.put(TYPE.PERSON, "/search/person?query=count:*&sort=count_desc");
+        SEARCH.put(TYPE.ORGANISATION, "/search/organization?query=count:*&sort=count_desc");
+    }
+    
     // count of entities per query
-    private final static int ENTITYCOUNT = 1000;
+    private static final int ENTITYCOUNT = 1000;
     // Logger
     private static final Logger LOG = LoggerFactory.getLogger(BeaconJob.class);
 
@@ -86,17 +86,17 @@ public class BeaconJob implements Job {
 
         try {
             // final Map<SECTOR, StringBuilder> beaconSectorFiles = new HashMap<>();
-            final Map<SECTOR, ByteArrayOutputStream> byteStreams = new HashMap<>();
-            final Map<SECTOR, BufferedWriter> writers = new HashMap<>();
+            final EnumMap<SECTOR, ByteArrayOutputStream> byteStreams = new EnumMap<>(SECTOR.class);
+            final EnumMap<SECTOR, BufferedWriter> writers = new EnumMap<>(SECTOR.class);
 
             // count of entities (person, org)
-            final Map<SECTOR, Integer> counts = new HashMap<>();
+            final EnumMap<SECTOR, Integer> counts = new EnumMap<>(SECTOR.class);
 
             // init Beacon map
             for (SECTOR sector : sectors) {
                 byteStreams.put(sector, new ByteArrayOutputStream());
-                writers.put(sector, new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(byteStreams.get(sector)), "UTF-8")));
-                //writers.put(sector, new BufferedWriter(new OutputStreamWriter(byteStreams.get(sector), "UTF-8")));
+                writers.put(sector, new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(byteStreams.get(sector)), StandardCharsets.UTF_8)));
+                //writers.put(sector, new BufferedWriter(new OutputStreamWriter(byteStreams.get(sector), StandardCharsets.UTF_8)));
                 counts.put(sector, 0);
             }
 
@@ -161,7 +161,7 @@ public class BeaconJob implements Job {
                     files_sector.setContent(byteStreams.get(sector).toByteArray());
 
                     final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(type, sector, true);
-                    if (lastBeaconinDatabaseList.isEmpty() || (lastBeaconinDatabaseList.size() > 0 && !files_sector.equals(lastBeaconinDatabaseList.get(0)))) {
+                    if (lastBeaconinDatabaseList.isEmpty() || (lastBeaconinDatabaseList.isEmpty() && !files_sector.equals(lastBeaconinDatabaseList.get(0)))) {
                         LOG.info("Writing {} entities of {} to database. Beacon file size is {}", counts.get(sector), sector.getHumanName(), byteStreams.get(sector).size());
                         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
                         final EntityTransaction tx = em.getTransaction();
@@ -196,7 +196,7 @@ public class BeaconJob implements Job {
                 LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), searchCount);
             }
 
-            final String urltmp = URL + SEARCH.get(type) + "&offset=" + (i * ENTITYCOUNT) + "&rows=" + ENTITYCOUNT; // + "&sort=ALPHA_ASC";
+            final String urltmp = URL + SEARCH.get(type) + "&offset=" + (i * ENTITYCOUNT) + "&rows=" + ENTITYCOUNT;
 
             list.addAll(getEntityCounts(DDBApi.httpGet(urltmp, "application/json")));
 
@@ -211,13 +211,13 @@ public class BeaconJob implements Job {
         return list;
     }
 
-    private static int getNumberOfResults(InputStream searchResult) throws IOException, ParseException {
+    private static int getNumberOfResults(InputStream searchResult) throws IOException {
         final ObjectMapper m = new ObjectMapper();
         final JsonNode resultsNode = m.readTree(searchResult).findValue("numberOfResults");
         return resultsNode.asInt();
     }
 
-    private List<EntityCounts> getEntityCounts(InputStream searchResult) throws IOException, ParseException {
+    private List<EntityCounts> getEntityCounts(InputStream searchResult) throws IOException {
 
         final List<EntityCounts> list = new ArrayList<>();
         final ObjectMapper m = new ObjectMapper();
@@ -260,12 +260,12 @@ public class BeaconJob implements Job {
 
         private final String id;
         private List<String> variantIds;
-        private final Map<SECTOR, Integer> counts;
+        private final EnumMap<SECTOR, Integer> counts;
 
         EntityCounts(String id, int count) {
             this.id = id;
             this.variantIds = new ArrayList<>();
-            this.counts = new HashMap<>();
+            this.counts = new EnumMap<>(SECTOR.class);
             this.counts.put(SECTOR.ALL, count);
 
         }
@@ -290,7 +290,7 @@ public class BeaconJob implements Job {
             return id;
         }
 
-        public Map<SECTOR, Integer> getCounts() {
+        public EnumMap<SECTOR, Integer> getCounts() {
             return counts;
         }
 
