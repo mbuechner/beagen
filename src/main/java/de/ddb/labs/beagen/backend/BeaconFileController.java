@@ -36,7 +36,7 @@ public class BeaconFileController {
 
     private static final Logger LOG = LoggerFactory.getLogger(BeaconFileController.class);
 
-    public BeaconFileController() {}
+    private BeaconFileController() {}
     
     /**
      * Get a Beacon file by its ID.
