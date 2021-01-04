@@ -49,7 +49,7 @@ public class Main {
     private static final String BEAGEN_DDBAPIKEY = "beagen.ddbapikey";
     // Job Scheduler
     private static Scheduler quartzScheduler;
-    
+
     /**
      * Main entry point which starts a local http server listening on port 80.
      *
@@ -109,18 +109,14 @@ public class Main {
             config.enableCorsForAllOrigins();
 
         }).events(event -> {
-            event.serverStarting(() -> {
-                EntityManagerUtil.getInstance(); // init DB
-            });
-            event.serverStopped(() -> {
-                EntityManagerUtil.getInstance().shutdown(); // close DB connection
-            });
+            // init DB
+            event.serverStarting(() -> EntityManagerUtil.getInstance());
+            // close DB connection
+            event.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
         }).start(80);
 
         // set UTF-8 as default charset
-        app.before(ctx -> {
-            ctx.res.setCharacterEncoding("UTF-8");
-        });
+        app.before(ctx -> ctx.res.setCharacterEncoding("UTF-8"));
 
         app.get("/item/:id", ctx -> {
             final Long id = Long.parseLong(ctx.pathParam("id"));
@@ -150,7 +146,6 @@ public class Main {
             final List<BeaconFile> bfileList = BeaconFileController.getBeaconFiles(type, sector, true);
             if (bfileList.size() > 0) {
                 final BeaconFile bfile = bfileList.get(0);
-                //ctx.contentType("text/plain");
                 ctx.result(bfile.getBeaconFile());
             } else {
                 throw new NotFoundResponse("Keine Beacon-Datei gefunden");
@@ -162,14 +157,10 @@ public class Main {
             ctx.redirect(((prefix != null && !prefix.isEmpty()) ? prefix : "") + "/list/latest?type=organisation&sector=all", 301);
         });
 
-        app.get("/list", ctx -> {
-            deliver(ctx, false);
-        });
+        app.get("/list", ctx -> deliver(ctx, false));
 
         // set paths
-        app.get("/list/latest", ctx -> {
-            deliver(ctx, true);
-        });
+        app.get("/list/latest", ctx -> deliver(ctx, true));
     }
 
     private static void deliver(Context ctx, boolean latest) {

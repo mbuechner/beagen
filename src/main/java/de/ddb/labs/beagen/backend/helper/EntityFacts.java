@@ -37,6 +37,9 @@ public class EntityFacts {
     // Logger
     private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(EntityFacts.class);
 
+    public EntityFacts() {
+    }
+    
     /**
      * Checks the current ID of GND data.
      *

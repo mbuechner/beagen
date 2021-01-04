@@ -18,6 +18,7 @@ package de.ddb.labs.beagen.backend;
 import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
 import de.ddb.labs.beagen.backend.helper.EntityManagerUtil;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.persistence.EntityManager;
@@ -35,6 +36,8 @@ public class BeaconFileController {
 
     private static final Logger LOG = LoggerFactory.getLogger(BeaconFileController.class);
 
+    public BeaconFileController() {}
+    
     /**
      * Get a Beacon file by its ID.
      *
@@ -102,7 +105,7 @@ public class BeaconFileController {
             return result;
         } catch (Exception e) {
             LOG.error("Could not get Beacon files. {}", e.getMessage(), e);
-            return null;
+            return new ArrayList<>();
         } finally {
             tx.commit();
         }
@@ -143,7 +146,7 @@ public class BeaconFileController {
             final List<BeaconFile> result = q2.getResultList();
             return result;
         } catch (Exception e) {
-            return null;
+            return new ArrayList<>();
         } finally {
             tx.commit();
         }
