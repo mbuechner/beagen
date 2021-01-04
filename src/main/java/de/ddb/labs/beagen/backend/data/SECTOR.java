@@ -77,7 +77,7 @@ public enum SECTOR {
             final String name = t.getHumanName();
 
             if ((uri != null && !uri.isEmpty())
-                    || (name != null && !name.isEmpty())
+                    || (abbr != null && !abbr.isEmpty())
                     || (name != null && !name.isEmpty())) {
 
                 jg.writeStartObject();

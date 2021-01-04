@@ -27,9 +27,9 @@ import org.slf4j.LoggerFactory;
  */
 public class EntityFacts {
 
-    private final static String EF_URL = "http://hub.culturegraph.org/entityfacts/";
-    private final static String EF_URL_SSL = "https://hub.culturegraph.org/entityfacts/";
-    private final static OkHttpClient client = new OkHttpClient.Builder()
+    private static final String EF_URL = "http://hub.culturegraph.org/entityfacts/";
+    private static final String EF_URL_SSL = "https://hub.culturegraph.org/entityfacts/";
+    private static final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .writeTimeout(5, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
