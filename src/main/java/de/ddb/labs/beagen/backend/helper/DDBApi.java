@@ -38,7 +38,7 @@ public class DDBApi {
             .readTimeout(10, TimeUnit.SECONDS)
             .build();
 
-    public DDBApi() {
+    private DDBApi() {
     }
 
     public static InputStream httpGet(final String urlStr, final String format) throws ConnectException, IOException {

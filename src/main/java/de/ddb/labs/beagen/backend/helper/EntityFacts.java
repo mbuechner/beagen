@@ -37,7 +37,7 @@ public class EntityFacts {
     // Logger
     private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(EntityFacts.class);
 
-    public EntityFacts() {
+    private EntityFacts() {
     }
     
     /**
