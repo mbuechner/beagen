@@ -69,6 +69,8 @@ public class BeaconFile implements Serializable {
 
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(BeaconFile.class);
+    private static final String BEAGEN_BASEURL = "beagen.baseurl";
+    private static final String API_ITEM_METHODE = "item";
 
     @Id
     @Basic(optional = false)
@@ -162,8 +164,8 @@ public class BeaconFile implements Serializable {
             LOG.error("Could not serialze Beacon file header. {}", e.getMessage());
         }
 
-        try {
-            new GZIPInputStream(new ByteArrayInputStream(content)).transferTo(baos);
+        try (final GZIPInputStream stream = new GZIPInputStream(new ByteArrayInputStream(content))) {
+            stream.transferTo(baos);
         } catch (IOException e) {
             LOG.error("Could not decompress Beacon file from database. {}", e.getMessage(), e);
         } finally {
@@ -192,8 +194,8 @@ public class BeaconFile implements Serializable {
 
         for (String s : Configuration.get().getValueAsArray("beagen.beacon.header." + type.getName().toLowerCase() + "." + sector.getShortName().toLowerCase(), "\\n")) {
             s = s.replace("{{date}}", dt);
-            s = s.replace("{{id}}", Configuration.get().getValue("beagen.baseurl") + "item/" + getId());
-            s = s.replace("{{feed}}", Configuration.get().getValue("beagen.baseurl") + "item/"
+            s = s.replace("{{id}}", Configuration.get().getValue(BEAGEN_BASEURL) + API_ITEM_METHODE + "/" + getId());
+            s = s.replace("{{feed}}", Configuration.get().getValue(BEAGEN_BASEURL) + API_ITEM_METHODE + "/"
                     + getType().toString().toLowerCase() + "/"
                     + getSector().toString().toLowerCase() + "/latest");
             sb.append(s);
@@ -301,7 +303,7 @@ public class BeaconFile implements Serializable {
 
         @Override
         public void serialize(Long t, JsonGenerator jg, SerializerProvider sp) throws IOException {
-            jg.writeString(Configuration.get().getValue("beagen.baseurl") + "item/" + Long.toString(t));
+            jg.writeString(Configuration.get().getValue(BEAGEN_BASEURL) + API_ITEM_METHODE + "/" + Long.toString(t));
         }
     }
 

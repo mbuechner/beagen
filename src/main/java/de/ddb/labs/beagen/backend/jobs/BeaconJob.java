@@ -57,6 +57,7 @@ public class BeaconJob implements Job {
     // URL of DDB server with dataset ID
     private static final String URL = "https://api.deutsche-digitale-bibliothek.de";
     private static final EnumMap<TYPE, String> SEARCH = new EnumMap<>(TYPE.class);
+    private static final String SECTORS = "sectors";
 
     static {
         SEARCH.put(TYPE.PERSON, "/search/person?query=count:*&sort=count_desc");
@@ -73,11 +74,17 @@ public class BeaconJob implements Job {
         // Date                  
         final Date date = new Date();
         for (TYPE type : TYPE.values()) {
-            execute(context, type, SECTOR.values(), date);
+            execute(type, SECTOR.values(), date);
         }
     }
 
-    public void execute(JobExecutionContext context, TYPE type, SECTOR[] sectors, Date date) {
+    /**
+     * Execute the generation of the BEACON files
+     * @param type For which types
+     * @param sectors For which sectors
+     * @param date Date to set for BEACOn files
+     */
+    public void execute(TYPE type, SECTOR[] sectors, Date date) {
         LOG.info("Start BEACON maker job for {}...", type);
         if (SEARCH.get(type) == null || SEARCH.get(type).isEmpty()) {
             LOG.warn("Could not generate search query for type {}. Generation of Beacon file(s) canceled.", type);
@@ -85,7 +92,6 @@ public class BeaconJob implements Job {
         }
 
         try {
-            // final Map<SECTOR, StringBuilder> beaconSectorFiles = new HashMap<>();
             final EnumMap<SECTOR, ByteArrayOutputStream> byteStreams = new EnumMap<>(SECTOR.class);
             final EnumMap<SECTOR, BufferedWriter> writers = new EnumMap<>(SECTOR.class);
 
@@ -96,7 +102,6 @@ public class BeaconJob implements Job {
             for (SECTOR sector : sectors) {
                 byteStreams.put(sector, new ByteArrayOutputStream());
                 writers.put(sector, new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(byteStreams.get(sector)), StandardCharsets.UTF_8)));
-                //writers.put(sector, new BufferedWriter(new OutputStreamWriter(byteStreams.get(sector), StandardCharsets.UTF_8)));
                 counts.put(sector, 0);
             }
 
@@ -239,8 +244,8 @@ public class BeaconJob implements Job {
                 for (SECTOR ct : SECTOR.values()) {
                     if (ct != SECTOR.ALL) {
                         try {
-                            if (objNode.get("sectors").has(ct.getJsonKey()) && objNode.get("sectors").get(ct.getJsonKey()).isInt()) {
-                                final int sector_count = objNode.get("sectors").get(ct.getJsonKey()).asInt();
+                            if (objNode.get(SECTORS).has(ct.getJsonKey()) && objNode.get(SECTORS).get(ct.getJsonKey()).isInt()) {
+                                final int sector_count = objNode.get(SECTORS).get(ct.getJsonKey()).asInt();
 
                                 LOG.debug("Adding: {} - {}", ct, sector_count);
                                 ec.addCount(ct, sector_count);
