@@ -63,7 +63,7 @@ public class BeaconJob implements Job {
         SEARCH.put(TYPE.PERSON, "/search/person?query=count:*&sort=count_desc");
         SEARCH.put(TYPE.ORGANISATION, "/search/organization?query=count:*&sort=count_desc");
     }
-    
+
     // count of entities per query
     private static final int ENTITYCOUNT = 1000;
     // Logger
@@ -80,6 +80,7 @@ public class BeaconJob implements Job {
 
     /**
      * Execute the generation of the BEACON files
+     *
      * @param type For which types
      * @param sectors For which sectors
      * @param date Date to set for BEACOn files
@@ -218,7 +219,12 @@ public class BeaconJob implements Job {
 
     private static int getNumberOfResults(InputStream searchResult) throws IOException {
         final ObjectMapper m = new ObjectMapper();
-        final JsonNode resultsNode = m.readTree(searchResult).findValue("numberOfResults");
+        JsonNode resultsNode;
+        try {
+            resultsNode = m.readTree(searchResult).findValue("numberOfResults");
+        } catch (Exception e) {
+            return 0;
+        }
         return resultsNode.asInt();
     }
 
@@ -226,7 +232,13 @@ public class BeaconJob implements Job {
 
         final List<EntityCounts> list = new ArrayList<>();
         final ObjectMapper m = new ObjectMapper();
-        final JsonNode resultsNode = m.readTree(searchResult).get("results").get(0).get("docs");
+
+        JsonNode resultsNode;
+        try {
+            resultsNode = m.readTree(searchResult).get("results").get(0).get("docs");
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
         if (resultsNode.isArray()) {
             for (final JsonNode objNode : resultsNode) {
                 final String id = objNode.get("id").asText();
