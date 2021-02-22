@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.eclipse.jetty.client.HttpResponse;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -51,7 +52,7 @@ public class DDBApi {
             final Response response = client.newCall(request).execute();
 
             // test if request was successful (status 200)
-            if (!response.isSuccessful()) {
+            if (!response.isSuccessful() || response.code() == 403) {
                 throw new ConnectException("HTTP status code for " + urlStr + " is " + response.code() + ". " + response.body().string());
             }
             return response.body().byteStream();

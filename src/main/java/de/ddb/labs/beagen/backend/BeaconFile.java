@@ -70,7 +70,7 @@ public class BeaconFile implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(BeaconFile.class);
     private static final String BEAGEN_BASEURL = "beagen.baseurl";
-    private static final String API_ITEM_METHODE = "item";
+    private static final String API_ITEM_METHODE = "/item";
 
     @Id
     @Basic(optional = false)
