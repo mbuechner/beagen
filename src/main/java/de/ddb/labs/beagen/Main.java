@@ -46,6 +46,7 @@ public class Main {
     private static final String BEAGEN_DATABASE_DIR = "beagen.database.dir";
     private static final String BEAGEN_BASEURL = "beagen.baseurl";
     private static final String BEAGEN_PORT = "beagen.port";
+    private static final String BEAGEN_PATHPREFIX = "beagen.pathprefix";
     private static final String BEAGEN_CRON = "beagen.cron";
     private static final String BEAGEN_DDBAPIKEY = "beagen.ddbapikey";
     // Job Scheduler
@@ -76,6 +77,9 @@ public class Main {
         if (System.getenv(BEAGEN_BASEURL) != null) {
             Configuration.get().setValue(BEAGEN_BASEURL, System.getenv(BEAGEN_BASEURL));
         }
+        if (System.getenv(BEAGEN_PATHPREFIX) != null) {
+            Configuration.get().setValue(BEAGEN_PATHPREFIX, System.getenv(BEAGEN_PATHPREFIX));
+        }
         if (System.getenv(BEAGEN_PORT) != null) {
             Configuration.get().setValue(BEAGEN_PORT, System.getenv(BEAGEN_PORT));
         }
@@ -89,6 +93,7 @@ public class Main {
         System.out.println(BEAGEN_LOG_DIR + "=" + Configuration.get().getValue(BEAGEN_LOG_DIR));
         System.out.println(BEAGEN_DATABASE_DIR + "=" + Configuration.get().getValue(BEAGEN_DATABASE_DIR));
         System.out.println(BEAGEN_BASEURL + "=" + Configuration.get().getValue(BEAGEN_BASEURL));
+        System.out.println(BEAGEN_PATHPREFIX + "=" + Configuration.get().getValue(BEAGEN_PATHPREFIX));
         System.out.println(BEAGEN_PORT + "=" + Configuration.get().getValue(BEAGEN_PORT));
         System.out.println(BEAGEN_CRON + "=" + Configuration.get().getValue(BEAGEN_CRON));
         System.out.println(BEAGEN_DDBAPIKEY + "=" + Configuration.get().getValue(BEAGEN_DDBAPIKEY));
@@ -123,7 +128,7 @@ public class Main {
         // set UTF-8 as default charset
         app.before(ctx -> ctx.res.setCharacterEncoding("UTF-8"));
 
-        app.get("/item/:id", ctx -> {
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "item/:id", ctx -> {
             final Long id = Long.parseLong(ctx.pathParam("id"));
             final BeaconFile bfile = BeaconFileController.getBeaconFile(id);
             if (bfile == null) {
@@ -132,7 +137,7 @@ public class Main {
             ctx.result(bfile.getBeaconFile());
         });
 
-        app.get("/item/:type/:sector/latest", ctx -> {
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "item/:type/:sector/latest", ctx -> {
 
             TYPE type;
             try {
@@ -157,15 +162,14 @@ public class Main {
             }
         });
 
-        app.get("/", ctx -> {
-            final String prefix = ctx.req.getHeader("X-Forwarded-Prefix");
-            ctx.redirect(((prefix != null && !prefix.isEmpty()) ? prefix : "") + "/list/latest?type=organisation&sector=all", 301);
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX), ctx -> {
+            ctx.redirect(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list/latest?type=organisation&sector=all", 301);
         });
 
-        app.get("/list", ctx -> deliver(ctx, false));
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "list", ctx -> deliver(ctx, false));
 
         // set paths
-        app.get("/list/latest", ctx -> deliver(ctx, true));
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "list/latest", ctx -> deliver(ctx, true));
     }
 
     private static void deliver(Context ctx, boolean latest) {
