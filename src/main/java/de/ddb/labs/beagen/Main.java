@@ -45,6 +45,7 @@ public class Main {
     private static final String BEAGEN_LOG_DIR = "beagen.log.dir";
     private static final String BEAGEN_DATABASE_DIR = "beagen.database.dir";
     private static final String BEAGEN_BASEURL = "beagen.baseurl";
+    private static final String BEAGEN_PORT = "beagen.port";
     private static final String BEAGEN_CRON = "beagen.cron";
     private static final String BEAGEN_DDBAPIKEY = "beagen.ddbapikey";
     // Job Scheduler
@@ -75,6 +76,9 @@ public class Main {
         if (System.getenv(BEAGEN_BASEURL) != null) {
             Configuration.get().setValue(BEAGEN_BASEURL, System.getenv(BEAGEN_BASEURL));
         }
+        if (System.getenv(BEAGEN_PORT) != null) {
+            Configuration.get().setValue(BEAGEN_PORT, System.getenv(BEAGEN_PORT));
+        }
         if (System.getenv(BEAGEN_CRON) != null) {
             Configuration.get().setValue(BEAGEN_CRON, System.getenv(BEAGEN_CRON));
         }
@@ -85,6 +89,7 @@ public class Main {
         System.out.println(BEAGEN_LOG_DIR + "=" + Configuration.get().getValue(BEAGEN_LOG_DIR));
         System.out.println(BEAGEN_DATABASE_DIR + "=" + Configuration.get().getValue(BEAGEN_DATABASE_DIR));
         System.out.println(BEAGEN_BASEURL + "=" + Configuration.get().getValue(BEAGEN_BASEURL));
+        System.out.println(BEAGEN_PORT + "=" + Configuration.get().getValue(BEAGEN_PORT));
         System.out.println(BEAGEN_CRON + "=" + Configuration.get().getValue(BEAGEN_CRON));
         System.out.println(BEAGEN_DDBAPIKEY + "=" + Configuration.get().getValue(BEAGEN_DDBAPIKEY));
 
@@ -113,7 +118,7 @@ public class Main {
             event.serverStarting(() -> EntityManagerUtil.getInstance());
             // close DB connection
             event.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
-        }).start(80);
+        }).start(Integer.parseInt(Configuration.get().getValue(BEAGEN_PORT)));
 
         // set UTF-8 as default charset
         app.before(ctx -> ctx.res.setCharacterEncoding("UTF-8"));
