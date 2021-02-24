@@ -8,8 +8,6 @@ FROM openjdk:15-alpine
 RUN mkdir /home/beagen
 COPY --from=MAVEN_CHAIN /tmp/target/beagen.jar /home/beagen/beagen.jar
 WORKDIR /home/beagen/
-CMD ["java", "-jar", "beagen.jar"]
-
-HEALTHCHECK --interval=1m --timeout=3s CMD wget --quiet --tries=1 --spider http://localhost/list/latest?type=person&sector=all || exit
+CMD ["java", "-Xms512M", "-Xmx1G", "-jar", "beagen.jar"]
 
 EXPOSE 8080
