@@ -10,12 +10,11 @@
         </encoder>
     </appender>
     
+    <!--
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${beagen.log.dir}/beagen.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- rollover daily -->
             <fileNamePattern>${beagen.log.dir}/beagen-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
-            <!-- keep 30 days -->
             <maxHistory>30</maxHistory>
             <totalSizeCap>5MB</totalSizeCap>
         </rollingPolicy>
@@ -23,9 +22,10 @@
             <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.sZ} %-5level %logger{5} - %msg%n</pattern>
         </encoder>
     </appender>
+    -->
     
     <root level="INFO">
         <appender-ref ref="STDOUT" />
-        <appender-ref ref="FILE" />
+        <!-- <appender-ref ref="FILE" /> -->
     </root> 
 </configuration>
