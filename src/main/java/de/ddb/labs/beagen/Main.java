@@ -128,7 +128,7 @@ public class Main {
         // set UTF-8 as default charset
         app.before(ctx -> ctx.res.setCharacterEncoding("UTF-8"));
 
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/:id", ctx -> {
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/{id}", ctx -> {
             final Long id = Long.parseLong(ctx.pathParam("id"));
             final BeaconFile bfile = BeaconFileController.getBeaconFile(id);
             if (bfile == null) {
@@ -137,7 +137,7 @@ public class Main {
             ctx.result(bfile.getBeaconFile());
         });
 
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/:type/:sector/latest", ctx -> {
+        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/{type}/{sector}/latest", ctx -> {
 
             TYPE type;
             try {
