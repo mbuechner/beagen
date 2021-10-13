@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.eclipse.jetty.client.HttpResponse;
 import org.slf4j.LoggerFactory;
 
 /**
