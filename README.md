@@ -5,14 +5,13 @@ A Beacon file generator for [Deutsche Digitale Bibliothek](https://www.deutsche-
 *Visit Beagen at DDBlabs:* https://labs.ddb.de/app/beagen
 ## See also
 - GitHub: https://github.com/mbuechner/beagen
-- Docker: https://hub.docker.com/r/mbuechner/beagen/
 - Maven site: https://mbuechner.github.io/beagen/ 
 
 ## Screenshot
 ![Screenshot of Beagen](beagen.png "Beagen")
 
 # Docker
-[Beagen is at Docker Hub](https://hub.docker.com/r/mbuechner/beagen). To run the container execute:
+[Beagen is available as Docker container at GitHub](https://github.com/mbuechner/beagen/pkgs/container/beagen%2Fbeagen). To run the container execute:
 ```
 docker run -d -p 8080:8080 -P \
     --env "beagen.baseurl=http://localhost/" \
@@ -20,7 +19,7 @@ docker run -d -p 8080:8080 -P \
     --env "beagen.database.dir=files/database/" \
     --env "beagen.log.dir=files/log/" \
     --env "beagen.ddbapikey=putinyourddbapikeyhere" \
-mbuechner/beagen
+ghcr.io/mbuechner/beagen/beagen:latest
 ```
 *Note:* `beagen.database.dir` and `beagen.log.dir` should be direcories inside a Docker volume. If not all data will be lost on restart.
 
@@ -34,7 +33,7 @@ mbuechner/beagen
 | beagen.ddbapikey    | API key of Deutsche Digitale Bibliothek ([request](https://www.deutsche-digitale-bibliothek.de/user/apikey) and [documentation](https://api.deutsche-digitale-bibliothek.de/))    |
 
 ## Container build
-If you like to build the Docker container by yourself, please follow these steps. (Not necessary if you use the [pre-build container at Docker Hub](https://hub.docker.com/r/mbuechner/beagen/).)
+If you like to build the Docker container by yourself, please follow these steps. (Not necessary if you use the [pre-build container at GitHub](https://github.com/mbuechner/beagen/pkgs/container/beagen%2Fbeagen).)
 
 1. Checkout GitHub repository: `git clone https://github.com/mbuechner/beagen`
 2. Go into folder: `cd beagen`
@@ -57,7 +56,7 @@ If you're using [Docker Stack](https://docs.docker.com/engine/reference/commandl
 version: '2'
 services:
   beagen:
-    image: mbuechner/beagen:latest
+    image: ghcr.io/mbuechner/beagen/beagen:latest
     volumes:
       - beagen:/home/beagen/files
     environment:
