@@ -14,7 +14,7 @@ A Beacon file generator for [Deutsche Digitale Bibliothek](https://www.deutsche-
 # Docker
 [Beagen is at Docker Hub](https://hub.docker.com/r/mbuechner/beagen). To run the container execute:
 ```
-docker run -d -p 80:80 -P \
+docker run -d -p 8080:8080 -P \
     --env "beagen.baseurl=http://localhost/" \
     --env "beagen.cron=0 0 12 * * ?" \
     --env "beagen.database.dir=files/database/" \
@@ -41,7 +41,7 @@ If you like to build the Docker container by yourself, please follow these steps
 3. Run `docker build -t beagen .`
 4. Start container:
     ```
-    docker run -d -p 80:80 -P \
+    docker run -d -p 8080:8080 -P \
         --env "beagen.baseurl=http://localhost/" \
         --env "beagen.cron=0 0 12 * * ?" \
         --env "beagen.database.dir=files/database/" \
@@ -49,7 +49,7 @@ If you like to build the Docker container by yourself, please follow these steps
         --env "beagen.ddbapikey=putinyourddbapikeyhere" \
     beagen
     ```
-5. Open browser: http://localhost:80/
+5. Open browser: http://localhost:8080/
 
 ## Docker stack
 If you're using [Docker Stack](https://docs.docker.com/engine/reference/commandline/stack/) to deploy application, this could be a possible configuration file in YAML.
@@ -67,7 +67,7 @@ services:
       - "beagen.log.dir=/home/beagen/files/log/"
       - "beagen.ddbapikey=putinyourddbapikeyhere"
     ports:
-      - "80"
+      - "8080"
     restart: always
 volumes:
   beagen:
@@ -82,4 +82,4 @@ This will build a fat-jar with all dependencies. To run the webserver type:
 ```
 java -jar target/beagen.jar
 ```
-It'll run locally under: http://localhost:80/
+It'll run locally under: http://localhost:8080/
