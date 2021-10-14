@@ -17,11 +17,9 @@ docker run -d -p 8080:8080 -P \
     --env "beagen.baseurl=http://localhost/" \
     --env "beagen.cron=0 0 12 * * ?" \
     --env "beagen.database.dir=files/database/" \
-    --env "beagen.log.dir=files/log/" \
-    --env "beagen.ddbapikey=putinyourddbapikeyhere" \
 ghcr.io/mbuechner/beagen/beagen:latest
 ```
-*Note:* `beagen.database.dir` and `beagen.log.dir` should be direcories inside a Docker volume. If not all data will be lost on restart.
+*Note:* `beagen.database.dir` should be a directory inside a Docker volume. If not all data will be lost on restart.
 
 ## Environment variables
 | Variable            | Description                                                                                                                                                                       |
@@ -29,8 +27,6 @@ ghcr.io/mbuechner/beagen/beagen:latest
 | beagen.baseurl      | Base url of Beagen application. Mainly used to build URLs in the Beacon file headers.                                                                                             |
 | beagen.cron         | How often should the Job run and check for updates at DDB ([Quartz documentation](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)). |
 | beagen.database.dir | Directory for the database files ([Apache Derby](https://db.apache.org/derby/))                                                                                                   |
-| beagen.log.dir      | Directory for all logging files (See [configuration](https://github.com/mbuechner/beagen/blob/master/src/main/resources/logback.xml) of [Logback](https://logback.qos.ch/)).      |
-| beagen.ddbapikey    | API key of Deutsche Digitale Bibliothek ([request](https://www.deutsche-digitale-bibliothek.de/user/apikey) and [documentation](https://api.deutsche-digitale-bibliothek.de/))    |
 
 ## Container build
 If you like to build the Docker container by yourself, please follow these steps. (Not necessary if you use the [pre-build container at GitHub](https://github.com/mbuechner/beagen/pkgs/container/beagen%2Fbeagen).)
@@ -44,8 +40,6 @@ If you like to build the Docker container by yourself, please follow these steps
         --env "beagen.baseurl=http://localhost/" \
         --env "beagen.cron=0 0 12 * * ?" \
         --env "beagen.database.dir=files/database/" \
-        --env "beagen.log.dir=files/log/" \
-        --env "beagen.ddbapikey=putinyourddbapikeyhere" \
     beagen
     ```
 5. Open browser: http://localhost:8080/
@@ -63,8 +57,6 @@ services:
       - "beagen.baseurl=https://example.com/beagen/"
       - "beagen.cron=0 0 12 * * ?"
       - "beagen.database.dir=/home/beagen/files/database/"
-      - "beagen.log.dir=/home/beagen/files/log/"
-      - "beagen.ddbapikey=putinyourddbapikeyhere"
     ports:
       - "8080"
     restart: always
