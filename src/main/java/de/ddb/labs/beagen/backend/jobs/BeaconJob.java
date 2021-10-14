@@ -78,6 +78,7 @@ public class BeaconJob implements Job {
     public void execute(JobExecutionContext context) throws JobExecutionException {
         // Date                  
         final Date date = new Date();
+        // execute(TYPE.PERSON, SECTOR.values(), date);
         for (TYPE type : TYPE.values()) {
             execute(type, SECTOR.values(), date);
         }
@@ -172,7 +173,7 @@ public class BeaconJob implements Job {
                     files_sector.setContent(byteStreams.get(sector).toByteArray());
 
                     final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(type, sector, true);
-                    if (lastBeaconinDatabaseList.isEmpty() || (lastBeaconinDatabaseList.isEmpty() && !files_sector.equals(lastBeaconinDatabaseList.get(0)))) {
+                    if (lastBeaconinDatabaseList.isEmpty() || !files_sector.equals(lastBeaconinDatabaseList.get(0))) {
                         LOG.info("Writing {} entities of {} to database. Beacon file size is {}", counts.get(sector), sector.getHumanName(), byteStreams.get(sector).size());
                         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
                         final EntityTransaction tx = em.getTransaction();
