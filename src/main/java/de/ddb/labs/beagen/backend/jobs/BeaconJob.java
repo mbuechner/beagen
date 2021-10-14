@@ -32,6 +32,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.Iterator;
@@ -40,6 +41,8 @@ import java.util.zip.GZIPOutputStream;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.PersistenceException;
+import lombok.Getter;
+import lombok.Setter;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -57,15 +60,17 @@ public class BeaconJob implements Job {
     // URL of DDB server with dataset ID
     private static final String URL = "https://api.deutsche-digitale-bibliothek.de";
     private static final EnumMap<TYPE, String> SEARCH = new EnumMap<>(TYPE.class);
-    private static final String SECTORS = "sectors";
 
-    static {
-        SEARCH.put(TYPE.PERSON, "/search/person?query=count:*&sort=count_desc");
-        SEARCH.put(TYPE.ORGANISATION, "/search/organization?query=count:*&sort=count_desc");
-    }
+    private final ObjectMapper mapper = new ObjectMapper();
 
     // count of entities per query
-    private static final int ENTITYCOUNT = 1000;
+    private static final int ENTITYCOUNT = 10000;
+
+    static {
+        SEARCH.put(TYPE.PERSON, "/search/index/person/select?q=*:*&fl=id,variant_id,count,count_sec_01,count_sec_02,count_sec_03,count_sec_04,count_sec_05,count_sec_06,count_sec_07&rows=" + ENTITYCOUNT + "&sort=count%20DESC,%20id%20ASC&wt=json");
+        SEARCH.put(TYPE.ORGANISATION, "/search/index/organization/select?q=*:*&fl=id,variant_id,count,count_sec_01,count_sec_02,count_sec_03,count_sec_04,count_sec_05,count_sec_06,count_sec_07&rows=" + ENTITYCOUNT + "&sort=count%20DESC,%20id%20ASC&wt=json");
+    }
+
     // Logger
     private static final Logger LOG = LoggerFactory.getLogger(BeaconJob.class);
 
@@ -133,13 +138,13 @@ public class BeaconJob implements Job {
                         } else if (id.toLowerCase().startsWith("https://d-nb.info/gnd/")) {
                             id = id.substring(22);
                         } else if (id.length() == 32
-                                && !ex.getVariantIds().isEmpty()
-                                && ex.getVariantIds().get(0).toLowerCase().startsWith("http://d-nb.info/gnd/")) {
-                            id = EntityFacts.getGndId(ex.getVariantIds().get(0).substring(21));
+                                && !ex.getVariant_id().isEmpty()
+                                && ex.getVariant_id().get(0).toLowerCase().startsWith("http://d-nb.info/gnd/")) {
+                            id = EntityFacts.getGndId(ex.getVariant_id().get(0).substring(21));
                         } else if (id.length() == 32
-                                && !ex.getVariantIds().isEmpty()
-                                && ex.getVariantIds().get(0).toLowerCase().startsWith("https://d-nb.info/gnd/")) {
-                            id = EntityFacts.getGndId(ex.getVariantIds().get(0).substring(22));
+                                && !ex.getVariant_id().isEmpty()
+                                && ex.getVariant_id().get(0).toLowerCase().startsWith("https://d-nb.info/gnd/")) {
+                            id = EntityFacts.getGndId(ex.getVariant_id().get(0).substring(22));
                         } else {
                             LOG.warn("Could not get any GND-ID of {}. That should never happen!", id);
                             continue;
@@ -189,138 +194,164 @@ public class BeaconJob implements Job {
 
     private List<EntityCounts> getDataFromDdbApi(TYPE type) throws IOException, ParseException {
 
-        final int searchCount = getNumberOfResults(DDBApi.httpGet(URL + SEARCH.get(type), "application/json"));
-
-        // sets are limited to 1000 per search query
-        final int iteration = (int) Math.ceil((double) searchCount / (double) ENTITYCOUNT);
+        final String baseUrl = URL + SEARCH.get(type);
 
         final List<EntityCounts> list = new ArrayList<>();
+        int totalCount = 0;
+        String nextCursorMark = "*";
 
-        for (int i = 0; i <= iteration; i++) {
+        while (true) {
+            final String url = baseUrl + "&cursorMark=" + nextCursorMark;
+            final InputStream is = DDBApi.httpGet(url);
 
-            if (i % 10 == 0) {
-                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), searchCount);
+            final JsonNode doc = mapper.readTree(is);
+            final String nextCursorMarkLocal = doc.get("nextCursorMark").asText("");
+            if (nextCursorMarkLocal.equals(nextCursorMark)) {
+                nextCursorMark = "";
+            } else {
+                nextCursorMark = nextCursorMarkLocal;
+            }
+            totalCount = doc.get("response").get("numFound").asInt(0);
+            final JsonNode docsArray = doc.get("response").get("docs");
+            final List<EntityCounts> ec = Arrays.asList(mapper.treeToValue(docsArray, EntityCounts[].class));
+            list.addAll(ec);
+
+            if (list.size() % 10000 == 0) {
+                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), totalCount);
+            } else if (list.size() == totalCount) {
+                // last logging
+                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), list.size());
             }
 
-            final String urltmp = URL + SEARCH.get(type) + "&offset=" + (i * ENTITYCOUNT) + "&rows=" + ENTITYCOUNT;
-
-            list.addAll(getEntityCounts(DDBApi.httpGet(urltmp, "application/json")));
-
-            // last logging
-            if (i == iteration) {
-                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), searchCount);
+            if (nextCursorMark.isBlank() || list.size() == totalCount) {
+                break;
             }
-
-            LOG.debug("Got {} GND-URIs and kept them in mind. {}", list.size(), urltmp);
         }
         LOG.info("Got {} GND-URIs from DDB API", list.size());
         return list;
     }
 
-    private static int getNumberOfResults(InputStream searchResult) throws IOException {
-        final ObjectMapper m = new ObjectMapper();
-        JsonNode resultsNode;
-        try {
-            resultsNode = m.readTree(searchResult).findValue("numberOfResults");
-        } catch (Exception e) {
-            return 0;
-        }
-        return resultsNode.asInt();
-    }
-
-    private List<EntityCounts> getEntityCounts(InputStream searchResult) throws IOException {
-
-        final List<EntityCounts> list = new ArrayList<>();
-        final ObjectMapper m = new ObjectMapper();
-
-        JsonNode resultsNode;
-        try {
-            resultsNode = m.readTree(searchResult).get("results").get(0).get("docs");
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-        if (resultsNode.isArray()) {
-            for (final JsonNode objNode : resultsNode) {
-                final String id = objNode.get("id").asText();
-                LOG.debug("Processing {}...", id);
-
-                final int count = objNode.get("count").asInt();
-
-                final EntityCounts ec = new EntityCounts(id, count);
-
-                final JsonNode variantIds = objNode.get("variantId");
-                for (JsonNode variantId : variantIds) {
-                    ec.addVariantIds(variantId.asText());
-                }
-
-                for (SECTOR ct : SECTOR.values()) {
-                    if (ct != SECTOR.ALL) {
-                        try {
-                            if (objNode.get(SECTORS).has(ct.getJsonKey()) && objNode.get(SECTORS).get(ct.getJsonKey()).isInt()) {
-                                final int sector_count = objNode.get(SECTORS).get(ct.getJsonKey()).asInt();
-
-                                LOG.debug("Adding: {} - {}", ct, sector_count);
-                                ec.addCount(ct, sector_count);
-                            }
-                        } catch (Exception a) {
-                            LOG.warn("Could not get or save {} at {}. {}", ct.getJsonKey(), id, a.getMessage());
-                        }
-                    }
-                }
-                list.add(ec);
-            }
-        }
-        return list;
-    }
-
     private static class EntityCounts {
 
-        private final String id;
-        private List<String> variantIds;
-        private final EnumMap<SECTOR, Integer> counts;
+        @Getter
+        @Setter
+        private String id;
+        @Getter
+        @Setter
+        private List<String> variant_id;
+        @Getter
+        @Setter
+        private int count;
+        @Getter
+        @Setter
+        private int count_sec_01;
+        @Getter
+        @Setter
+        private int count_sec_02;
+        @Getter
+        @Setter
+        private int count_sec_03;
+        @Getter
+        @Setter
+        private int count_sec_04;
+        @Getter
+        @Setter
+        private int count_sec_05;
+        @Getter
+        @Setter
+        private int count_sec_06;
+        @Getter
+        @Setter
+        private int count_sec_07;
 
-        EntityCounts(String id, int count) {
-            this.id = id;
-            this.variantIds = new ArrayList<>();
-            this.counts = new EnumMap<>(SECTOR.class);
-            this.counts.put(SECTOR.ALL, count);
-
+        public EntityCounts() {
+            this.variant_id = new ArrayList<>();
         }
 
-        public int getCount() {
-            return counts.get(SECTOR.ALL);
+        public EntityCounts(String id, int count) {
+            this.id = id;
+            this.variant_id = new ArrayList<>();
         }
 
         public boolean hasCount(SECTOR ct) {
-            return counts.containsKey(ct);
+            switch (ct) {
+                case ALL -> {
+                    if (count > 0) {
+                        return true;
+                    }
+                }
+                case ARCHIVE -> {
+                    if (count_sec_01 > 0) {
+                        return true;
+                    }
+                }
+                case LIBRARY -> {
+                    if (count_sec_02 > 0) {
+                        return true;
+                    }
+                }
+                case MONUMENTPROTECTION -> {
+                    if (count_sec_03 > 0) {
+                        return true;
+                    }
+                }
+                case RESEARCH -> {
+                    if (count_sec_04 > 0) {
+                        return true;
+                    }
+                }
+                case MEDIA -> {
+                    if (count_sec_05 > 0) {
+                        return true;
+                    }
+                }
+                case MUSEUM -> {
+                    if (count_sec_06 > 0) {
+                        return true;
+                    }
+                }
+                case OTHER -> {
+                    if (count_sec_07 > 0) {
+                        return true;
+                    }
+                }
+                default -> {
+                }
+            }
+
+            return false;
         }
 
         public int getCount(SECTOR ct) {
-            return counts.get(ct);
-        }
-
-        public Integer addCount(SECTOR ct, int value) {
-            return counts.put(ct, value);
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public EnumMap<SECTOR, Integer> getCounts() {
-            return counts;
-        }
-
-        public List<String> getVariantIds() {
-            return variantIds;
-        }
-
-        public void setVariantIds(List<String> variantIds) {
-            this.variantIds = variantIds;
-        }
-
-        public void addVariantIds(String variantId) {
-            variantIds.add(variantId);
+            switch (ct) {
+                case ALL -> {
+                    return count;
+                }
+                case ARCHIVE -> {
+                    return count_sec_01;
+                }
+                case LIBRARY -> {
+                    return count_sec_02;
+                }
+                case MONUMENTPROTECTION -> {
+                    return count_sec_03;
+                }
+                case RESEARCH -> {
+                    return count_sec_04;
+                }
+                case MEDIA -> {
+                    return count_sec_05;
+                }
+                case MUSEUM -> {
+                    return count_sec_06;
+                }
+                case OTHER -> {
+                    return count_sec_07;
+                }
+                default -> {
+                    return 0;
+                }
+            }
         }
     }
 }

@@ -42,13 +42,11 @@ import org.quartz.impl.StdSchedulerFactory;
 public class Main {
 
     // Configuration
-    private static final String BEAGEN_LOG_DIR = "beagen.log.dir";
     private static final String BEAGEN_DATABASE_DIR = "beagen.database.dir";
     private static final String BEAGEN_BASEURL = "beagen.baseurl";
     private static final String BEAGEN_PORT = "beagen.port";
     private static final String BEAGEN_PATHPREFIX = "beagen.pathprefix";
     private static final String BEAGEN_CRON = "beagen.cron";
-    private static final String BEAGEN_DDBAPIKEY = "beagen.ddbapikey";
     // Job Scheduler
     private static Scheduler quartzScheduler;
 
@@ -62,12 +60,6 @@ public class Main {
 
         // set System properties for pathes
         // get env and overwrite default configuration
-        if (System.getenv(BEAGEN_LOG_DIR) != null) {
-            System.setProperty(BEAGEN_LOG_DIR, System.getenv(BEAGEN_LOG_DIR));
-            Configuration.get().setValue(BEAGEN_LOG_DIR, System.getenv(BEAGEN_LOG_DIR));
-        } else {
-            System.setProperty(BEAGEN_LOG_DIR, Configuration.get().getValue(BEAGEN_LOG_DIR));
-        }
         if (System.getenv(BEAGEN_DATABASE_DIR) != null) {
             System.setProperty(BEAGEN_DATABASE_DIR, System.getenv(BEAGEN_DATABASE_DIR));
             Configuration.get().setValue(BEAGEN_DATABASE_DIR, System.getenv(BEAGEN_DATABASE_DIR));
@@ -86,17 +78,12 @@ public class Main {
         if (System.getenv(BEAGEN_CRON) != null) {
             Configuration.get().setValue(BEAGEN_CRON, System.getenv(BEAGEN_CRON));
         }
-        if (System.getenv(BEAGEN_DDBAPIKEY) != null) {
-            Configuration.get().setValue(BEAGEN_DDBAPIKEY, System.getenv(BEAGEN_DDBAPIKEY));
-        }
 
-        System.out.println(BEAGEN_LOG_DIR + "=" + Configuration.get().getValue(BEAGEN_LOG_DIR));
         System.out.println(BEAGEN_DATABASE_DIR + "=" + Configuration.get().getValue(BEAGEN_DATABASE_DIR));
         System.out.println(BEAGEN_BASEURL + "=" + Configuration.get().getValue(BEAGEN_BASEURL));
         System.out.println(BEAGEN_PATHPREFIX + "=" + Configuration.get().getValue(BEAGEN_PATHPREFIX));
         System.out.println(BEAGEN_PORT + "=" + Configuration.get().getValue(BEAGEN_PORT));
         System.out.println(BEAGEN_CRON + "=" + Configuration.get().getValue(BEAGEN_CRON));
-        System.out.println(BEAGEN_DDBAPIKEY + "=" + Configuration.get().getValue(BEAGEN_DDBAPIKEY));
 
         // start update job
         final JobDetail job = JobBuilder.newJob(BeaconJob.class)

@@ -41,12 +41,12 @@ public class DDBApi {
     private DDBApi() {
     }
 
-    public static InputStream httpGet(final String urlStr, final String format) throws ConnectException, IOException {
+    public static InputStream httpGet(final String urlStr) throws ConnectException, IOException {
         try {
             final Request request = new Request.Builder()
                     .url(urlStr)
-                    .addHeader("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.get().getValue("beagen.ddbapikey") + "\"")
-                    .addHeader("Accept", format)
+                    // .addHeader("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.get().getValue("beagen.ddbapikey") + "\"")
+                    // .addHeader("Accept", format)
                     .build();
             final Response response = client.newCall(request).execute();
 
