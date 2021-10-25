@@ -25,5 +25,4 @@ hs_err_pid*
 /nb-configuration.xml
 /derby.log
 /files/
-/src/main/resources/beagen.dev.cfg
 /src/main/resources/.idea

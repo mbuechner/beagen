@@ -29,6 +29,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -67,13 +69,28 @@ public class BeaconJob implements Job {
     private static final int ENTITYCOUNT = 10000;
 
     static {
-        SEARCH.put(TYPE.PERSON, "/search/index/person/select?q=*:*&fl=id,variant_id,count,count_sec_01,count_sec_02,count_sec_03,count_sec_04,count_sec_05,count_sec_06,count_sec_07&rows=" + ENTITYCOUNT + "&sort=count%20DESC,%20id%20ASC&wt=json");
-        SEARCH.put(TYPE.ORGANISATION, "/search/index/organization/select?q=*:*&fl=id,variant_id,count,count_sec_01,count_sec_02,count_sec_03,count_sec_04,count_sec_05,count_sec_06,count_sec_07&rows=" + ENTITYCOUNT + "&sort=count%20DESC,%20id%20ASC&wt=json");
+        SEARCH.put(TYPE.PERSON, "/search/index/person/select?"
+                + "q=count:*"
+                + "&fl=id,variant_id,count,count_sec_01,count_sec_02,count_sec_03,count_sec_04,count_sec_05,count_sec_06,count_sec_07"
+                + "&rows=" + ENTITYCOUNT
+                + "&sort=count%20DESC,id%20ASC"
+                + "&wt=json");
+        SEARCH.put(TYPE.ORGANISATION, "/search/index/organization/select?"
+                + "q=(type:gnd-organization%20AND%20count:*)%20OR%20(type:ddb-institution%20AND%20variant_id:*)"
+                + "&fl=id,variant_id,count,count_sec_01,count_sec_02,count_sec_03,count_sec_04,count_sec_05,count_sec_06,count_sec_07"
+                + "&rows=" + ENTITYCOUNT
+                + "&sort=count%20DESC,id%20ASC"
+                + "&wt=json");
     }
 
     // Logger
     private static final Logger LOG = LoggerFactory.getLogger(BeaconJob.class);
 
+    /**
+     *
+     * @param context
+     * @throws JobExecutionException
+     */
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         // Date                  
@@ -198,12 +215,12 @@ public class BeaconJob implements Job {
         final String baseUrl = URL + SEARCH.get(type);
 
         final List<EntityCounts> list = new ArrayList<>();
-        int totalCount = 0;
         String nextCursorMark = "*";
 
         while (true) {
-            final String url = baseUrl + "&cursorMark=" + nextCursorMark;
+            final String url = baseUrl + "&cursorMark=" + URLEncoder.encode(nextCursorMark, Charset.forName("UTF-8"));
             final InputStream is = DDBApi.httpGet(url);
+            LOG.debug("Query: {}", url);
 
             final JsonNode doc = mapper.readTree(is);
             final String nextCursorMarkLocal = doc.get("nextCursorMark").asText("");
@@ -212,7 +229,7 @@ public class BeaconJob implements Job {
             } else {
                 nextCursorMark = nextCursorMarkLocal;
             }
-            totalCount = doc.get("response").get("numFound").asInt(0);
+            int totalCount = doc.get("response").get("numFound").asInt(0);
             final JsonNode docsArray = doc.get("response").get("docs");
             final List<EntityCounts> ec = Arrays.asList(mapper.treeToValue(docsArray, EntityCounts[].class));
             list.addAll(ec);
