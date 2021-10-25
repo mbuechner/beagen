@@ -96,9 +96,10 @@ public class Main {
                 .withSchedule(CronScheduleBuilder.cronSchedule(Configuration.get().getValue(BEAGEN_CRON)))
                 .build();
 
-        quartzScheduler = new StdSchedulerFactory().getScheduler();
+        quartzScheduler = new StdSchedulerFactory().getDefaultScheduler();
         quartzScheduler.start();
         quartzScheduler.scheduleJob(job, trigger);
+        
 
         // start javalin server
         final Javalin app = Javalin.create(config -> {
