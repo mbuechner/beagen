@@ -35,7 +35,7 @@ public class DDBApi {
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .writeTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(600, TimeUnit.SECONDS)
             .build();
 
     private DDBApi() {
@@ -45,8 +45,6 @@ public class DDBApi {
         try {
             final Request request = new Request.Builder()
                     .url(urlStr)
-                    // .addHeader("Authorization", "OAuth oauth_consumer_key=\"" + Configuration.get().getValue("beagen.ddbapikey") + "\"")
-                    // .addHeader("Accept", format)
                     .build();
             final Response response = client.newCall(request).execute();
 

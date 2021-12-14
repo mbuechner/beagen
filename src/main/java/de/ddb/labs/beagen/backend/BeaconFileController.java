@@ -53,7 +53,11 @@ public class BeaconFileController {
             final Query q2 = em.createQuery("SELECT f FROM BeaconFile AS f WHERE f.id = :myid", BeaconFile.class);
             q2.setParameter("myid", id);
             q2.setMaxResults(1);
-            return (BeaconFile) q2.getResultList().get(0);
+            if(!q2.getResultList().isEmpty()) {
+                return (BeaconFile) q2.getResultList().get(0);
+            } else {
+                return null;
+            }
         } catch (Exception e) {
             LOG.error("Could not get Beacon file. {}", e.getMessage(), e);
             return null;

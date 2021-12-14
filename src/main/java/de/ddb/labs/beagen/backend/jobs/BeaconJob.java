@@ -24,10 +24,12 @@ import de.ddb.labs.beagen.backend.data.TYPE;
 import de.ddb.labs.beagen.backend.helper.DDBApi;
 import de.ddb.labs.beagen.backend.helper.EntityFacts;
 import de.ddb.labs.beagen.backend.helper.EntityManagerUtil;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
@@ -83,6 +85,13 @@ public class BeaconJob implements Job {
                 + "&wt=json");
     }
 
+    private final static String NEWSPAPAER_SEARCH = "/search/index/newspaper/select?"
+            + "q=hasLoadedIssues:true"
+            + "&rows=2147483647"
+            + "&wt=csv"
+            + "&fl=id"
+            + "&sort=id ASC";
+
     // Logger
     private static final Logger LOG = LoggerFactory.getLogger(BeaconJob.class);
 
@@ -95,9 +104,58 @@ public class BeaconJob implements Job {
     public void execute(JobExecutionContext context) throws JobExecutionException {
         // Date                  
         final Date date = new Date();
-        // execute(TYPE.PERSON, SECTOR.values(), date);
-        for (TYPE type : TYPE.values()) {
-            execute(type, SECTOR.values(), date);
+        executeNewspapers(date);
+        execute(TYPE.ORGANISATION, SECTOR.values(), date);
+        execute(TYPE.PERSON, SECTOR.values(), date);
+    }
+
+    public void executeNewspapers(Date date) {
+
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        int count = 0;
+
+        try (final InputStream is = DDBApi.httpGet(URL + NEWSPAPAER_SEARCH);
+                final BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                final BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(baos), StandardCharsets.UTF_8))) {
+
+            boolean firstLine = true;
+            for (String line; (line = reader.readLine()) != null;) {
+                if (firstLine) {
+                    firstLine = false;
+                    continue;
+                }
+                bw.append(line);
+                bw.newLine();
+                count++;
+            }
+        } catch (Exception ex) {
+            LOG.error("Error while processing entity data of Newspaper. {}", ex.getMessage());
+        }
+
+        try {
+            baos.flush();
+        } catch (IOException ex) {
+            //nothing;
+        }
+
+        final BeaconFile bf = new BeaconFile(TYPE.NEWSPAPER, SECTOR.ALL, date, count, baos.toByteArray());
+        final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(TYPE.NEWSPAPER, SECTOR.ALL, true);
+
+        if (lastBeaconinDatabaseList.isEmpty() || !bf.equals(lastBeaconinDatabaseList.get(0))) {
+            LOG.info("Writing {} entities of {} to database. Beacon file size is {}", count, SECTOR.ALL.getHumanName(), baos.size());
+            final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
+            final EntityTransaction tx = em.getTransaction();
+            tx.begin();
+            em.persist(bf);
+            tx.commit();
+        } else {
+            LOG.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", TYPE.NEWSPAPER, SECTOR.ALL);
+        }
+
+        try {
+            baos.close();
+        } catch (IOException e) {
+            //nothing
         }
     }
 
