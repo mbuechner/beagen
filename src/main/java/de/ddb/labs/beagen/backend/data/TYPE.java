@@ -26,7 +26,8 @@ import java.io.IOException;
  */
 public enum TYPE {
     ORGANISATION("Organisation"),
-    PERSON("Person");
+    PERSON("Person"),
+    NEWSPAPER("Newspaper");
 
     private final String name;
 
@@ -60,6 +61,11 @@ public enum TYPE {
                 if (t == TYPE.ORGANISATION) {
                     jg.writeFieldName("@id");
                     jg.writeString("http://d-nb.info/standards/elementset/gnd#CorporateBody");
+                }
+
+                if (t == TYPE.NEWSPAPER) {
+                    jg.writeFieldName("@id");
+                    jg.writeString("https://ld.zdb-services.de/");
                 }
 
                 jg.writeFieldName("abbr");

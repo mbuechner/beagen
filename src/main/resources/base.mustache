@@ -6,7 +6,7 @@
         <meta content="IE=edge" http-equiv="X-UA-Compatible,Chrome=1"/>
         <meta content="Michael Büchner" name="author"/>
         <link crossorigin="anonymous" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" rel="stylesheet"/>
-        <link crossorigin="anonymous" href="https://stackpath.bootstrapcdn.com/bootswatch/4.5.0/spacelab/bootstrap.min.css" integrity="sha384-sIQOcNYer0kt7oTyFe/YrGzKMFP/qxsJbXTxq0/uiZQgpwXwEu41sVz2M61lWbai" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/spacelab/bootstrap.min.css" integrity="sha384-F1AY0h4TrtJ8OCUQYOzhcFzUTxSOxuaaJ4BeagvyQL8N9mE4hrXjdDsNx249NpEc" crossorigin="anonymous">
         <link href="https://unpkg.com/bootstrap-table@1.16.0/dist/bootstrap-table.min.css" rel="stylesheet">
         <title>Beagen - Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</title>
     </head>
@@ -25,6 +25,7 @@
                         <select class="custom-select" id="selectType">
                             <option selected="" value="organisation">Organisation</option>
                             <option value="person">Person</option>
+                            <option value="newspaper">Zeitungstitel</option>
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -115,6 +116,11 @@
                 url = url.endsWith('/list') ? url : url + '/list';
                 url = url + ($('#selectorAll').prop('checked') === true ? '/latest' : '');
                 $('#showBtn').attr('href', url + '?' + que);
+                if (typ === 'type=newspaper') {
+                    $('#selectSector').attr('disabled', 'disabled');
+                } else {
+                    $('#selectSector').removeAttr('disabled');
+                }
             });
             $('#showBtn').click(function () {
                 $("#selectSector").trigger("change");
@@ -122,6 +128,11 @@
             $(document).ready(function () {
                 $('#selectSector').val(getUrlParameter('sector') ? getUrlParameter('sector') : 'all');
                 $('#selectType').val(getUrlParameter('type') ? getUrlParameter('type') : 'organisation');
+                if (getUrlParameter('type') === 'newspaper') {
+                    $('#selectSector').attr('disabled', 'disabled');
+                } else {
+                    $('#selectSector').removeAttr('disabled');
+                }
                 const url = $(location).attr('href');
                 let endIndex = (url.indexOf('?') === -1) ? url.length : url.indexOf('?');
                 let url_parts = url.substring(0, endIndex).split('/').filter(function (str) {

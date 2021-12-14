@@ -114,20 +114,11 @@ public class BeaconFile implements Serializable {
     public BeaconFile() {
     }
 
-    public BeaconFile(Long id) {
-        this.id = id;
-    }
-
-    public BeaconFile(SECTOR sector, Date created, byte[] content) {
+    public BeaconFile(TYPE type, SECTOR sector, Date created, int count, byte[] content) {
+        this.type = type;
         this.sector = sector;
         this.created = new Date(created.getTime());
-        this.content = Arrays.copyOf(content, content.length);
-    }
-
-    public BeaconFile(Long id, SECTOR sector, Date created, byte[] content) {
-        this.id = id;
-        this.sector = sector;
-        this.created = new Date(created.getTime());
+        this.count = count;
         this.content = Arrays.copyOf(content, content.length);
     }
 
