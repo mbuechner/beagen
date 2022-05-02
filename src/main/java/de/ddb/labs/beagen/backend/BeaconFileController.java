@@ -36,8 +36,9 @@ public class BeaconFileController {
 
     private static final Logger LOG = LoggerFactory.getLogger(BeaconFileController.class);
 
-    private BeaconFileController() {}
-    
+    private BeaconFileController() {
+    }
+
     /**
      * Get a Beacon file by its ID.
      *
@@ -53,7 +54,7 @@ public class BeaconFileController {
             final Query q2 = em.createQuery("SELECT f FROM BeaconFile AS f WHERE f.id = :myid", BeaconFile.class);
             q2.setParameter("myid", id);
             q2.setMaxResults(1);
-            if(!q2.getResultList().isEmpty()) {
+            if (!q2.getResultList().isEmpty()) {
                 return (BeaconFile) q2.getResultList().get(0);
             } else {
                 return null;
@@ -89,7 +90,11 @@ public class BeaconFileController {
             qs += "WHERE f.type = :type ";
         }
 
-        qs += "ORDER BY f.created DESC, f.type, f.sector";
+        qs += "ORDER BY f.created DESC, f.type, f.sector ";
+
+        if (onlyLatest) {
+            qs += "LIMIT 1";
+        }
 
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
         final EntityTransaction tx = EntityManagerUtil.getInstance().getEntityTransaction();
@@ -170,7 +175,8 @@ public class BeaconFileController {
             qs += "WHERE f.type = :type ";
         }
 
-        qs += "ORDER BY f.created DESC";
+        qs += "ORDER BY f.created DESC ";
+        qs += "LIMIT 1";
 
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
         final EntityTransaction tx = em.getTransaction();

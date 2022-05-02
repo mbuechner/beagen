@@ -42,7 +42,7 @@ import org.quartz.impl.StdSchedulerFactory;
 public class Main {
 
     // Configuration
-    private static final String BEAGEN_DATABASE_DIR = "beagen.database.dir";
+    private static final String BEAGEN_DATABASE = "beagen.database";
     private static final String BEAGEN_BASEURL = "beagen.baseurl";
     private static final String BEAGEN_PORT = "beagen.port";
     private static final String BEAGEN_PATHPREFIX = "beagen.pathprefix";
@@ -60,11 +60,11 @@ public class Main {
 
         // set System properties for pathes
         // get env and overwrite default configuration
-        if (System.getenv(BEAGEN_DATABASE_DIR) != null) {
-            System.setProperty(BEAGEN_DATABASE_DIR, System.getenv(BEAGEN_DATABASE_DIR));
-            Configuration.get().setValue(BEAGEN_DATABASE_DIR, System.getenv(BEAGEN_DATABASE_DIR));
+        if (System.getenv(BEAGEN_DATABASE) != null) {
+            System.setProperty(BEAGEN_DATABASE, System.getenv(BEAGEN_DATABASE));
+            Configuration.get().setValue(BEAGEN_DATABASE, System.getenv(BEAGEN_DATABASE));
         } else {
-            System.setProperty(BEAGEN_DATABASE_DIR, Configuration.get().getValue(BEAGEN_DATABASE_DIR));
+            System.setProperty(BEAGEN_DATABASE, Configuration.get().getValue(BEAGEN_DATABASE));
         }
         if (System.getenv(BEAGEN_BASEURL) != null) {
             Configuration.get().setValue(BEAGEN_BASEURL, System.getenv(BEAGEN_BASEURL));
@@ -79,7 +79,7 @@ public class Main {
             Configuration.get().setValue(BEAGEN_CRON, System.getenv(BEAGEN_CRON));
         }
 
-        System.out.println(BEAGEN_DATABASE_DIR + "=" + Configuration.get().getValue(BEAGEN_DATABASE_DIR));
+        System.out.println(BEAGEN_DATABASE + "=" + Configuration.get().getValue(BEAGEN_DATABASE));
         System.out.println(BEAGEN_BASEURL + "=" + Configuration.get().getValue(BEAGEN_BASEURL));
         System.out.println(BEAGEN_PATHPREFIX + "=" + Configuration.get().getValue(BEAGEN_PATHPREFIX));
         System.out.println(BEAGEN_PORT + "=" + Configuration.get().getValue(BEAGEN_PORT));
