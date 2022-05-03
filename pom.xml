@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.ddb.labs</groupId>
     <artifactId>beagen</artifactId>
-    <version>1.5</version>
+    <version>1.5.2</version>
     <packaging>jar</packaging>
     <name>Beagen</name>
     <description>Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek.</description>
@@ -90,19 +90,18 @@
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>org.hibernate.javax.persistence</groupId>
-            <artifactId>hibernate-jpa-2.1-api</artifactId>
-            <version>1.0.2.Final</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-entitymanager</artifactId>
             <version>5.6.8.Final</version>
-        </dependency>            
+        </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-c3p0</artifactId>
+            <version>5.6.8.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-hikaricp</artifactId>
             <version>5.6.8.Final</version>
         </dependency>
         <dependency>
@@ -115,7 +114,6 @@
             <artifactId>okhttp</artifactId>
             <version>4.9.3</version>
         </dependency>
-
     </dependencies>
     <reporting>
         <plugins>

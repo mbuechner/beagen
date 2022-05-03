@@ -96,7 +96,7 @@ public class Main {
                 .withSchedule(CronScheduleBuilder.cronSchedule(Configuration.get().getValue(BEAGEN_CRON)))
                 .build();
 
-        quartzScheduler = new StdSchedulerFactory().getDefaultScheduler();
+        quartzScheduler = StdSchedulerFactory.getDefaultScheduler();
         quartzScheduler.start();
         quartzScheduler.scheduleJob(job, trigger);
         

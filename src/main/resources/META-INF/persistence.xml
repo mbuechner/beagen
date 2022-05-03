@@ -5,22 +5,29 @@
         <class>de.ddb.labs.beagen.backend.BeaconFile</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
+            <!-- General settings -->
             <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
             <property name="javax.persistence.jdbc.url" value="jdbc:h2:${beagen.database}"/>
             <!-- <property name="javax.persistence.jdbc.user" value="beagen"/>-->
             <!-- <property name="javax.persistence.jdbc.password" value="beagen"/>-->
             <property name="hibernate.flushMode" value="FLUSH_AUTO"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
-            <!-- c3p0 config http://www.hibernate.org/214.html -->
-            <property name="connection.provider_class" value="org.hibernate.connection.C3P0ConnectionProvider"/>
-            <property name="hibernate.c3p0.acquire_increment" value="1"/>
-            <property name="hibernate.c3p0.idle_test_period" value="60"/>
-            <property name="hibernate.c3p0.min_size" value="1"/>
-            <property name="hibernate.c3p0.max_size" value="2"/>
-            <property name="hibernate.c3p0.max_statements" value="50"/>
-            <property name="hibernate.c3p0.timeout" value="0"/>
-            <property name="hibernate.c3p0.acquireRetryAttempts" value="1"/>
-            <property name="hibernate.c3p0.acquireRetryDelay" value="250"/>
+            
+            <!-- Hikari CP -->
+            <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider" />
+            <property name="hibernate.hikari.minimumIdle" value="20" />
+            <property name="hibernate.hikari.maximumPoolSize" value="100" />
+            <property name="hibernate.hikari.idleTimeout" value="30000" />
+            <!-- <property name="hibernate.hikari.dataSourceClassName" value="org.h2.Driver" /> -->
+            <!-- <property name="hibernate.hikari.dataSource.url" value="jdbc:h2:${beagen.database}" /> -->
+            <!-- <property name="hibernate.hikari.username" value="" /> -->
+            <!-- <property name="hibernate.hikari.password" value="" /> -->
+
+            <!-- Disable the second-level cache  -->
+            <property name="hibernate.cache.provider_class" value="org.hibernate.cache.NoCacheProvider"/>
+
+            <!-- Default is false for backwards compatibility. -->
+            <property name="hibernate.id.new_generator_mappings" value="true"/>
             <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>

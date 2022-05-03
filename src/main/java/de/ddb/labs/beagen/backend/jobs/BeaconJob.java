@@ -148,6 +148,7 @@ public class BeaconJob implements Job {
             tx.begin();
             em.persist(bf);
             tx.commit();
+            em.close();
         } else {
             LOG.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", TYPE.NEWSPAPER, SECTOR.ALL);
         }
@@ -255,6 +256,7 @@ public class BeaconJob implements Job {
                         tx.begin();
                         em.persist(files_sector);
                         tx.commit();
+                        em.close();
                     } else {
                         LOG.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", type, sector);
                     }

@@ -64,6 +64,7 @@ public class BeaconFileController {
             return null;
         } finally {
             tx.commit();
+            em.close();
         }
     }
 
@@ -97,7 +98,7 @@ public class BeaconFileController {
         }
 
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
-        final EntityTransaction tx = EntityManagerUtil.getInstance().getEntityTransaction();
+        final EntityTransaction tx = em.getTransaction();
         tx.begin();
         try {
             final Query q2 = em.createQuery(qs, BeaconFile.class);
@@ -117,6 +118,7 @@ public class BeaconFileController {
             return new ArrayList<>();
         } finally {
             tx.commit();
+            em.close();
         }
     }
 
@@ -158,6 +160,7 @@ public class BeaconFileController {
             return new ArrayList<>();
         } finally {
             tx.commit();
+            em.close();
         }
 
     }
@@ -194,6 +197,7 @@ public class BeaconFileController {
             return null;
         } finally {
             tx.commit();
+            em.close();
         }
     }
 }

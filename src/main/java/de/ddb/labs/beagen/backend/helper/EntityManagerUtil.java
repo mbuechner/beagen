@@ -28,11 +28,9 @@ public class EntityManagerUtil {
 
     private static EntityManagerUtil instance;
     private final EntityManagerFactory EMF;
-    private final EntityManager EM;
 
     private EntityManagerUtil() {
         EMF = Persistence.createEntityManagerFactory("BeagenFile");
-        EM = EMF.createEntityManager();
     }
 
     public static synchronized EntityManagerUtil getInstance() {
@@ -43,17 +41,10 @@ public class EntityManagerUtil {
     }
 
     public EntityManager getEntityManager() {
-        return EM;
-    }
-
-    public EntityTransaction getEntityTransaction() {
-        return getInstance().getEntityManager().getTransaction();
+        return EMF.createEntityManager();
     }
 
     public void shutdown() {
-        if (EM != null) {
-            EM.close();
-        }
         if (EMF != null) {
             EMF.close();
         }
