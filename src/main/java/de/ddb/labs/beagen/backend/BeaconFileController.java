@@ -84,7 +84,7 @@ public class BeaconFileController {
         String qs = "SELECT f FROM BeaconFile AS f ";
 
         if (onlyLatest && lastDate != null && type != null) {
-            qs += "WHERE f.created = :lastDate AND f.type = :type";
+            qs += "WHERE f.created = :lastDate AND f.type = :type ";
         } else if (onlyLatest && lastDate != null) {
             qs += "WHERE f.created = :lastDate ";
         } else if (type != null) {
@@ -92,10 +92,6 @@ public class BeaconFileController {
         }
 
         qs += "ORDER BY f.created DESC, f.type, f.sector ";
-
-        if (onlyLatest) {
-            qs += "LIMIT 1";
-        }
 
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
         final EntityTransaction tx = em.getTransaction();
@@ -109,6 +105,10 @@ public class BeaconFileController {
 
             if (type != null) {
                 q2.setParameter("type", type);
+            }
+
+            if (onlyLatest) {
+                q2.setMaxResults(1);
             }
 
             final List<BeaconFile> result = q2.getResultList();
@@ -139,7 +139,7 @@ public class BeaconFileController {
             qs += "f.type = :type AND ";
         }
 
-        qs += "f.sector = :mysector ORDER BY f.created DESC, f.type, f.sector";
+        qs += "f.sector = :mysector ORDER BY f.created DESC, f.type, f.sector ";
 
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
         final EntityTransaction tx = em.getTransaction();
@@ -147,6 +147,9 @@ public class BeaconFileController {
         try {
             final Query q2 = em.createQuery(qs, BeaconFile.class);
             q2.setParameter("mysector", sector);
+            if (onlyLatest) {
+                q2.setMaxResults(1);
+            }
             if (type != null) {
                 q2.setParameter("type", type);
             }
@@ -179,7 +182,6 @@ public class BeaconFileController {
         }
 
         qs += "ORDER BY f.created DESC ";
-        qs += "LIMIT 1";
 
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
         final EntityTransaction tx = em.getTransaction();
