@@ -1,200 +1,198 @@
-<!DOCTYPE html>
-<html lang="de" xmlns="http://www.w3.org/1999/xhtml">
-    <head>
-        <meta charset="utf-8"/>
-        <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport"/>
-        <meta content="IE=edge" http-equiv="X-UA-Compatible,Chrome=1"/>
-        <meta content="Michael Büchner" name="author"/>
-        <link crossorigin="anonymous" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" rel="stylesheet"/>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/spacelab/bootstrap.min.css" integrity="sha384-F1AY0h4TrtJ8OCUQYOzhcFzUTxSOxuaaJ4BeagvyQL8N9mE4hrXjdDsNx249NpEc" crossorigin="anonymous">
-        <link href="https://unpkg.com/bootstrap-table@1.16.0/dist/bootstrap-table.min.css" rel="stylesheet">
-        <title>Beagen - Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</title>
-    </head>
-    <body>
-        <div class="container mt-2">
-            <div class="jumbotron">
-                <h1 class="display-4">
-                    <a href="#" alt="${project.name} v${project.version}" title="${project.name} v${project.version}" style="text-decoration: none;">${project.name}</a>
-                </h1>
-                <p class="lead">Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</p>
-                <hr class="my-4"/>
-                <div id="alert_placeholder"></div>
-                <div class="row">
-                    <div class="col-md-4">
-                        <label class="col-form-label" for="selectType">Typ</label>
-                        <select class="custom-select" id="selectType">
-                            <option selected="" value="organisation">Organisation</option>
-                            <option value="person">Person</option>
-                            <option value="newspaper">Zeitungstitel</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="col-form-label" for="selectSector">Kultursparte</label>
-                        <select class="custom-select" id="selectSector">
-                            <option value="all">Alle</option>
-                            <option value="archive">Archive</option>
-                            <option value="library">Bibliothek</option>
-                            <option value="monumentprotection">Denkmalpflege</option>
-                            <option value="research">Forschung</option>
-                            <option value="media">Mediathek</option>
-                            <option value="museum">Museum</option>
-                            <option value="other">Sonstige</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 align-self-end">
-                        <a aria-disabled="true" class="btn btn-primary mt-3" href="" id="showBtn" role="button">Anzeigen</a>
-                    </div>
-                    <div class="col-md-12 mt-2">
-                        <div class="custom-control custom-switch">
-                            <input checked="checked" class="custom-control-input" id="selectorAll" type="checkbox"/>
-                            <label class="custom-control-label" for="selectorAll">Nur aktuellste anzeigen</label>
-                        </div>
-                    </div>
-                </div>
-                <br/>
-                <p id="message"></p>
-                <div class="row d-none" id="beaconTableRow">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped" data-locale="de-DE" id="beaconTable">
-                            <thead>
-                                <tr>
-                                    <th data-field="type.name" data-sortable="true" scope="col">Typ</th>
-                                    <th data-field="sector.name" data-sortable="true" scope="col">Kultursparte</th>
-                                    <th data-field="created" data-sortable="true" scope="col">Erstellungsdatum</th>
-                                    <th data-field="count" data-sortable="true" scope="col">Anzahl</th>
-                                    <th data-field="@id" data-formatter="linkFormatter" data-sortable="true" scope="col">Direktlink</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="row d-none" id="chartRow">
-                    <div class="col-lg-8 col-md-12 mt-4" style="float: none; margin: 0 auto;">
-                        <div class="card card-body">
-                            <canvas class="chartjs" id="beaconChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta content="Michael Büchner" name="author">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/spacelab/bootstrap.min.css" integrity="sha384-7jv7Cz/bPqbBsJ7CBCt/XsB6OhMa69zEjBu9ACVWol2jJYKJVLAwvUJVozygdb0e" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/bootstrap-table.min.css" integrity="sha256-ORnldD5YVLDWZEuWfzftDJTjhdNUi3GKMdclqKNf6Rg=" crossorigin="anonymous">
+    <title>Beagen - Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</title>
+  </head>
+  <body>
+    <div class="container mt-2">
+      <div class="bg-light mb-4 rounded-2 p-5 mt-3">
+        <h1 class="display-4">
+          <a href="#" title="${project.name} v${project.version}" style="text-decoration: none">${project.name}</a>
+        </h1>
+        <p class="lead">Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</p>
+        <hr class="my-4" />
+        <div id="alert_placeholder"></div>
+        <div class="row">
+          <div class="col-md-4">
+            <label class="col-form-label" for="selectType">Typ</label>
+            <select class="form-select" id="selectType">
+              <option selected="" value="organisation">Organisation</option>
+              <option value="person">Person</option>
+              <option value="newspaper">Zeitungstitel</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="col-form-label" for="selectSector">Kultursparte</label>
+            <select class="form-select" id="selectSector">
+              <option value="all">Alle</option>
+              <option value="archive">Archive</option>
+              <option value="library">Bibliothek</option>
+              <option value="monumentprotection">Denkmalpflege</option>
+              <option value="research">Forschung</option>
+              <option value="media">Mediathek</option>
+              <option value="museum">Museum</option>
+              <option value="other">Sonstige</option>
+            </select>
+          </div>
+          <div class="col-md-4 align-self-end">
+            <a class="btn btn-primary mt-3" href="" id="showBtn" role="button">Anzeigen</a>
+          </div>
+          <div class="col-md-12 mt-2">
+            <div class="form-check form-switch">
+              <input checked="checked" class="form-check-input" id="selectorAll" type="checkbox" />
+              <label class="form-check-label" for="selectorAll">Nur aktuellste anzeigen</label>
             </div>
+          </div>
         </div>
-        <script crossorigin="anonymous" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
-        <script crossorigin="anonymous" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-PsVx54sumjXGPcguQ2vmeiivxx8Xxig7wAjq52Yx0Qw=" src="https://cdnjs.cloudflare.com/ajax/libs/core-js/2.6.11/core.min.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-R4pqcOYV8lt7snxMQO/HSbVCFRPMdrhAFMH+vr9giYI=" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
-        <script src="https://unpkg.com/bootstrap-table@1.16.0/dist/bootstrap-table.min.js"></script>
-        <script src="https://unpkg.com/bootstrap-table@1.16.0/dist/locale/bootstrap-table-de-DE.min.js"></script>
-        <script>
-            function linkFormatter(value) {
-                return "<a href=\"" + value.trim() + "\">" + value.trim() + "</a>";
-            };
-            const getUrlParameter = function getUrlParameter(sParam) {
-                let sPageURL = window.location.search.substring(1);
-                let sURLVariables = sPageURL.split('&');
-                for (let i = 0; i < sURLVariables.length; i = i + 1) {
-                    let sParameterName = sURLVariables[i].split('=');
-                    if (sParameterName[0] === sParam) {
-                        return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
-                    }
+        <br />
+        <p id="message"></p>
+        <div class="row d-none" id="beaconTableRow">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped" data-locale="de-DE" id="beaconTable">
+              <thead>
+                <tr>
+                  <th data-field="type.name" data-sortable="true" scope="col">Typ</th>
+                  <th data-field="sector.name" data-sortable="true" scope="col">Kultursparte</th>
+                  <th data-field="created" data-sortable="true" scope="col">Erstellungsdatum</th>
+                  <th data-field="count" data-sortable="true" scope="col">Anzahl</th>
+                  <th data-field="@id" data-formatter="linkFormatter" data-sortable="true" scope="col">Direktlink</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="row d-none" id="chartRow">
+          <div class="col-12 mt-4" style="float: none; margin: 0 auto">
+            <div class="card card-body">
+              <canvas class="chartjs" id="beaconChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/bootstrap-table.min.js" integrity="sha256-yU4LPMId2rUUeuqMPU/C8NX2CPzt46ofELxWqll6ZBU=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/src/locale/bootstrap-table-de-DE.js" integrity="sha384-SffFTDdNyjN8vhFblL+RK+GaJg2uWp/tsWu1WZ4sYZXmGgKyH72og9tTuFuNHkgy" crossorigin="anonymous"></script>
+    <script>
+      function linkFormatter(value) {
+        return '<a href="' + value.trim() + '">' + value.trim() + "</a>";
+      }
+      const getUrlParameter = function getUrlParameter(sParam) {
+        let sPageURL = window.location.search.substring(1);
+        let sURLVariables = sPageURL.split("&");
+        for (let i = 0; i < sURLVariables.length; i = i + 1) {
+          let sParameterName = sURLVariables[i].split("=");
+          if (sParameterName[0] === sParam) {
+            return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+          }
+        }
+      };
+      const bootstrap_alert = function (message, link) {
+        let html = '<div class="alert alert-primary alert-dismissible fade show" role="alert">' + message;
+        if (typeof link !== "undefined") {
+          html += '<a class="alert-link" href="' + link + '">' + link + "</a>";
+        }
+        html += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schliessen"></button></div>';
+        $("#alert_placeholder").html(html);
+      };
+      $("#selectSector, #selectType, #selectorAll").change(function () {
+        let typ = "type=" + ($("#selectType").val() ? $("#selectType").val() : $("#selectType option:first").val());
+        let sec = "sector=" + ($("#selectSector").val() ? $("#selectSector").val() : $("#selectSector option:first").val());
+        let que = typ + (typ && sec ? "&" + sec : sec);
+        let url = $(location).attr("href").split("?")[0];
+        url = url.substring(url.length - 1) === "/" ? url.substring(0, url.length - 1) : url;
+        url = url.endsWith("/latest") ? url.substring(0, url.length - 7) : url;
+        url = url.endsWith("/list") ? url : url + "/list";
+        url = url + ($("#selectorAll").prop("checked") === true ? "/latest" : "");
+        $("#showBtn").attr("href", url + "?" + que);
+        if (typ === "type=newspaper") {
+          $("#selectSector").attr("disabled", "disabled");
+          $("#selectSector").val("all");
+        } else {
+          $("#selectSector").removeAttr("disabled");
+        }
+      });
+      $("#showBtn").click(function () {
+        $("#selectSector").trigger("change");
+      });
+      $(document).ready(function () {
+        $("#selectSector").val(getUrlParameter("sector") ? getUrlParameter("sector") : "all");
+        $("#selectType").val(getUrlParameter("type") ? getUrlParameter("type") : "organisation");
+        if (getUrlParameter("type") === "newspaper") {
+          $("#selectSector").attr("disabled", "disabled");
+        } else {
+          $("#selectSector").removeAttr("disabled");
+        }
+        const url = $(location).attr("href");
+        let endIndex = url.indexOf("?") === -1 ? url.length : url.indexOf("?");
+        let url_parts = url
+          .substring(0, endIndex)
+          .split("/")
+          .filter(function (str) {
+            return str !== "";
+          });
+        if (url_parts[url_parts.length - 1] === "latest") {
+          $("#selectorAll").prop("checked", true);
+          if ($("#selectSector").val() && $("#selectType").val() && $("#selectType").val() !== "all") {
+            var baseUrl = $(location).attr("href").substring(0, $(location).attr("href").indexOf("list/"));
+            bootstrap_alert("Für die Auswahl gib es einen <strong>symbolischen Link</strong>, der immer " + " direkt auf die aktuellste Beacon-Datei führt: ", baseUrl + "item/" + $("#selectType").val() + "/" + $("#selectSector").val() + "/latest");
+          }
+        } else {
+          $("#selectorAll").prop("checked", false);
+        }
+        $.getJSON(url + (url.indexOf("?") === -1 ? "?" : "&") + "rnd=" + Math.random(), function (data) {
+          $("#beaconTableRow").removeClass("d-none");
+          $("#beaconTable").bootstrapTable({
+            data: data,
+          });
+          if ($("#selectorAll").prop("checked") === false) {
+            let chartDataLabel = [];
+            let chartDataCount = [];
+            $.each(data, function (key1, value1) {
+              let count = "";
+              let created = "";
+              $.each(value1, function (key2, value2) {
+                if (key2 === "created") {
+                  created = value2.indexOf("T") === -1 ? value2 : value2.substring(0, value2.indexOf("T"));
+                } else if (key2 === "count") {
+                  count = value2;
                 }
-            };
-            const bootstrap_alert = function (message, link) {
-                let html = '<div class="alert alert-primary" role="alert"><button type="button" class="close"' + ' data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' + message;
-                if (typeof link !== 'undefined') {
-                    html += '<a class="alert-link" href="' + link + '">' + link + '</a>';
-                }
-                html += '</div>';
-                $('#alert_placeholder').html(html);
-            };
-            $('#selectSector, #selectType, #selectorAll').change(function () {
-                let typ = 'type=' + ($('#selectType').val() ? $('#selectType').val() : $('#selectType option:first').val());
-                let sec = 'sector=' + ($('#selectSector').val() ? $('#selectSector').val() : $('#selectSector option:first').val());
-                let que = typ + (typ && sec ? '&' + sec : sec);
-                let url = $(location).attr('href').split('?')[0];
-                url = url.substring(url.length - 1) === '/' ? url.substring(0, url.length - 1) : url;
-                url = url.endsWith('/latest') ? url.substring(0, url.length - 7) : url;
-                url = url.endsWith('/list') ? url : url + '/list';
-                url = url + ($('#selectorAll').prop('checked') === true ? '/latest' : '');
-                $('#showBtn').attr('href', url + '?' + que);
-                if (typ === 'type=newspaper') {
-                    $('#selectSector').attr('disabled', 'disabled');
-                    $('#selectSector').val('all');
-                } else {
-                    $('#selectSector').removeAttr('disabled');
-                }
+              });
+              chartDataLabel.unshift(created);
+              chartDataCount.unshift(count);
             });
-            $('#showBtn').click(function () {
-                $("#selectSector").trigger("change");
-            });
-            $(document).ready(function () {
-                $('#selectSector').val(getUrlParameter('sector') ? getUrlParameter('sector') : 'all');
-                $('#selectType').val(getUrlParameter('type') ? getUrlParameter('type') : 'organisation');
-                if (getUrlParameter('type') === 'newspaper') {
-                    $('#selectSector').attr('disabled', 'disabled');
-                } else {
-                    $('#selectSector').removeAttr('disabled');
-                }
-                const url = $(location).attr('href');
-                let endIndex = (url.indexOf('?') === -1) ? url.length : url.indexOf('?');
-                let url_parts = url.substring(0, endIndex).split('/').filter(function (str) {
-                        return (str !== '');
-                    });
-                if (url_parts[url_parts.length - 1] === 'latest') {
-                    $('#selectorAll').prop('checked', true);
-                    if ($('#selectSector').val() && $('#selectType').val() && $('#selectType').val() !== 'all') {
-                        var baseUrl = $(location).attr('href').substring(0, $(location).attr('href').indexOf('list/'));
-                        bootstrap_alert('Für die Auswahl gib es einen <strong>symbolischen Link</strong>, der immer ' + ' direkt auf die aktuellste Beacon-Datei führt:<br/>', baseUrl + 'item/' + $('#selectType').val() + '/' + $('#selectSector').val() + '/latest');
-                    }
-                } else {
-                    $('#selectorAll').prop('checked', false);
-                }
-                $.getJSON(url + (url.indexOf('?') === -1 ? '?' : '&') + 'rnd=' + Math.random(), function (data) {
-                    $('#beaconTableRow').removeClass('d-none');
-                    $('#beaconTable').bootstrapTable({
-                        data: data
-                    });
-                    if ($('#selectorAll').prop('checked') === false) {
-                        let chartDataLabel = [];
-                        let chartDataCount = [];
-                        $.each(data, function (key1, value1) {
-                            let count = '';
-                            let created = '';
-                            $.each(value1, function (key2, value2) {
-                                if (key2 === 'created') {
-                                    created = (value2.indexOf('T') === -1) ? value2 : value2.substring(0, value2.indexOf('T'));
-                                } else if (key2 === 'count') {
-                                    count = value2;
-                                }
-                            });
-                            chartDataLabel.unshift(created);
-                            chartDataCount.unshift(count);
-                        });
-                        let datasetObj = {};
-                        datasetObj.label = 'Entwicklung der Anzahl';
-                        datasetObj.data = chartDataCount;
-                        let chartData = {};
-                        chartData.labels = chartDataLabel;
-                        chartData.datasets = [datasetObj];
-                        $('#chartRow').removeClass('d-none');
-                        new Chart($('#beaconChart')[0].getContext('2d'), {
-                            type: 'line',
-                            data: chartData,
-                            options: {
-                                scales: {
-                                    yAxes: [{
-                                            ticks: {
-                                                beginAtZero: true
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        });
-                    }
-                }).fail(function (data) {
-                    bootstrap_alert('<strong>Fehler ' + data.status + '</strong>, ' + data.statusText + ' :-(<br/>' + JSON.parse(data.responseText).title);
-                });
-            });
-        </script>
-    </body>
+            let datasetObj = {};
+            datasetObj.label = "Entwicklung der Anzahl";
+            datasetObj.data = chartDataCount;
+            let chartData = {};
+            chartData.labels = chartDataLabel;
+            chartData.datasets = [datasetObj];
+            $("#chartRow").removeClass("d-none");
+            new Chart($("#beaconChart")[0].getContext("2d"), {
+                type: "line",
+                data: chartData,
+                options: {
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                },
+              });
+          }
+        }).fail(function (data) {
+          bootstrap_alert("<strong>Fehler " + data.status + "</strong>, " + data.statusText + " :-(<br>" + JSON.parse(data.responseText).title);
+        });
+      });
+    </script>
+  </body>
 </html>

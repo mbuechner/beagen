@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
 public class BeaconJob implements Job {
 
     // URL of DDB server with dataset ID
-    private static final String URL = "https://api.deutsche-digitale-bibliothek.de";
+    private static final String URL = "https://api.deutsche-digitale-bibliothek.de/2";
     private static final EnumMap<TYPE, String> SEARCH = new EnumMap<>(TYPE.class);
 
     private final ObjectMapper mapper = new ObjectMapper();

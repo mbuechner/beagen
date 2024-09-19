@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,13 @@ public class Configuration {
 
     private static final String PROPERTY_FILE = "/beagen.cfg";
     private static final String PROPERTY_FILE_DEV = "/beagen.dev.cfg";
-    private static final Configuration INSTANCE = new Configuration();
     private static final Properties PROPERTIES = new Properties();
 
     private Configuration() {
+    }
+
+    private static class ConfigurationHelper {
+        private static final Configuration INSTANCE = new Configuration();
     }
 
     public static Configuration get() throws InvalidPropertiesFormatException, IOException {
@@ -55,7 +58,7 @@ public class Configuration {
             }
         }
 
-        return Configuration.INSTANCE;
+        return ConfigurationHelper.INSTANCE;
     }
 
     public String[] getValueAsArray(String key, String split) {

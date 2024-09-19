@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package de.ddb.labs.beagen.backend.helper;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
-import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
 
 /**

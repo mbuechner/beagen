@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ public class DDBApi {
     // Logger
     private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(DDBApi.class);
     private static final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .writeTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(600, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(360, TimeUnit.SECONDS)
+            .readTimeout(180, TimeUnit.SECONDS)
             .build();
 
     private DDBApi() {

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2021 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ import io.javalin.Javalin;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.NotFoundResponse;
+import io.javalin.http.HttpStatus;
+import io.javalin.rendering.template.JavalinMustache;
 import java.util.List;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
@@ -99,13 +101,16 @@ public class Main {
         quartzScheduler = StdSchedulerFactory.getDefaultScheduler();
         quartzScheduler.start();
         quartzScheduler.scheduleJob(job, trigger);
-        
 
         // start javalin server
         final Javalin app = Javalin.create(config -> {
-            config.autogenerateEtags = true;
-            config.enableCorsForAllOrigins();
-
+            config.fileRenderer(new JavalinMustache());
+            config.http.generateEtags = true;
+            config.bundledPlugins.enableCors(cors -> {
+                cors.addRule(it -> {
+                    it.anyHost();
+                });
+            });
         }).events(event -> {
             // init DB
             event.serverStarting(() -> EntityManagerUtil.getInstance());
@@ -114,10 +119,10 @@ public class Main {
         }).start(Integer.parseInt(Configuration.get().getValue(BEAGEN_PORT)));
 
         // set UTF-8 as default charset
-        app.before(ctx -> ctx.res.setCharacterEncoding("UTF-8"));
+        app.before(ctx -> ctx.res().setCharacterEncoding("UTF-8"));
 
         app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/{id}", ctx -> {
-            final Long id = Long.parseLong(ctx.pathParam("id"));
+            final Long id = Long.valueOf(ctx.pathParam("id"));
             final BeaconFile bfile = BeaconFileController.getBeaconFile(id);
             if (bfile == null) {
                 throw new NotFoundResponse("Beacon-Datei " + id + " nicht gefunden");
@@ -142,7 +147,7 @@ public class Main {
             }
 
             final List<BeaconFile> bfileList = BeaconFileController.getBeaconFiles(type, sector, true);
-            if (bfileList.size() > 0) {
+            if (!bfileList.isEmpty()) {
                 final BeaconFile bfile = bfileList.get(0);
                 ctx.result(bfile.getBeaconFile());
             } else {
@@ -151,7 +156,7 @@ public class Main {
         });
 
         app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX), ctx -> {
-            ctx.redirect(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list/latest?type=organisation&sector=all", 301);
+            ctx.redirect(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list/latest?type=organisation&sector=all", HttpStatus.MOVED_PERMANENTLY);
         });
 
         app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list", ctx -> deliver(ctx, false));
@@ -161,7 +166,7 @@ public class Main {
     }
 
     private static void deliver(Context ctx, boolean latest) {
-        if (deliverHtml(ctx.req.getHeader("Accept"))) {
+        if (deliverHtml(ctx.req().getHeader("Accept"))) {
             ctx.render("/base.mustache");
             return;
         }
