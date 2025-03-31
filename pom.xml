@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.ddb.labs</groupId>
     <artifactId>beagen</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.0</version>
     <packaging>jar</packaging>
     <name>Beagen</name>
     <description>Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek.</description>
@@ -36,37 +36,35 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
     </properties>
     <dependencies>
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
-            <version>6.3.0</version>
+            <version>6.5.0</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin-rendering</artifactId>
-            <version>6.3.0</version>
+            <version>6.5.0</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.17.2</version>
+            <version>2.18.3</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>2.17.2</version>
+            <version>2.18.3</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.17.2</version>
+            <version>2.18.3</version>
             <scope>compile</scope>
             <type>jar</type>
         </dependency>
@@ -78,19 +76,19 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.34</version>
+            <version>1.18.36</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.7</version>
+            <version>1.5.18</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
-            <version>2.3.2</version>
+            <version>2.5.0</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -124,7 +122,7 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.6.2</version>
+                <version>4.9.3.0</version>
             </plugin>
         </plugins>
     </reporting>
@@ -140,29 +138,28 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.6.2</version>
+                <version>4.9.3.0</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.github.spotbugs</groupId>
                         <artifactId>spotbugs</artifactId>
-                        <version>4.8.6</version>
+                        <version>4.9.3</version>
                     </dependency>
                 </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.14.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
                     <showDeprecation>true</showDeprecation>
+                    <release>21</release>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.4.1</version>
+                <version>3.5.0</version>
                 <configuration>
                     <mainClass>de.ddb.labs.beagen.Main</mainClass>
                 </configuration>
@@ -177,7 +174,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-site-plugin</artifactId>
-                <version>3.20.0</version>
+                <version>3.21.0</version>
                 <configuration>
                     <outputDirectory>${basedir}/docs</outputDirectory>
                 </configuration>
@@ -185,14 +182,14 @@
                     <dependency>
                         <groupId>com.bernardomg.maven.skins</groupId>
                         <artifactId>docs-maven-skin</artifactId>
-                        <version>2.3.2</version>
+                        <version>2.3.3</version>
                     </dependency> 
                 </dependencies>           
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-project-info-reports-plugin</artifactId>
-                <version>3.7.0</version>
+                <version>3.9.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
