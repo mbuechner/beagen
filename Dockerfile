@@ -4,7 +4,7 @@ COPY src /tmp/src/
 WORKDIR /tmp/
 RUN mvn clean package
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-noble
 RUN mkdir /home/beagen
 COPY --from=maven_chain /tmp/target/beagen.jar /home/beagen/beagen.jar
 WORKDIR /home/beagen/
