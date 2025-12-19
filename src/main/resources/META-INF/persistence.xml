@@ -1,37 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
     <persistence-unit name="BeagenFile">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <class>de.ddb.labs.beagen.backend.BeaconFile</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <!-- General settings -->
-            <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
-            <property name="javax.persistence.jdbc.url" value="jdbc:h2:${beagen.database}"/>
+            <property name="javax.persistence.jdbc.driver" value="org.h2.Driver" />
+            <property name="javax.persistence.jdbc.url" value="jdbc:h2:${beagen.database}" />
             <!-- <property name="javax.persistence.jdbc.user" value="beagen"/>-->
             <!-- <property name="javax.persistence.jdbc.password" value="beagen"/>-->
-            <property name="hibernate.flushMode" value="FLUSH_AUTO"/>
-            <property name="hibernate.hbm2ddl.auto" value="update"/>
-            
+            <property name="hibernate.flushMode" value="FLUSH_AUTO" />
+            <property name="hibernate.hbm2ddl.auto" value="update" />
+
             <!-- Hikari CP -->
-            <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider" />
-            <property name="hibernate.hikari.minimumIdle" value="20" />
-            <property name="hibernate.hikari.maximumPoolSize" value="100" />
-            <property name="hibernate.hikari.idleTimeout" value="30000" />
+            <property name="hibernate.connection.provider_class"
+                value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider" />
+            <property name="hibernate.hikari.minimumIdle" value="3" />
+            <property name="hibernate.hikari.maximumPoolSize" value="12" />
+            <property name="hibernate.hikari.idleTimeout" value="300000" />
+            <property name="hibernate.hikari.maxLifetime" value="1800000" />
+            <property name="hibernate.hikari.connectionTimeout" value="30000" />
             <!-- <property name="hibernate.hikari.dataSourceClassName" value="org.h2.Driver" /> -->
-            <!-- <property name="hibernate.hikari.dataSource.url" value="jdbc:h2:${beagen.database}" /> -->
+            <!-- <property name="hibernate.hikari.dataSource.url" value="jdbc:h2:${beagen.database}"
+            /> -->
             <!-- <property name="hibernate.hikari.username" value="" /> -->
             <!-- <property name="hibernate.hikari.password" value="" /> -->
 
             <!-- Disable the second-level cache  -->
-            <property name="hibernate.cache.provider_class" value="org.hibernate.cache.NoCacheProvider"/>
+            <property name="hibernate.cache.provider_class"
+                value="org.hibernate.cache.NoCacheProvider" />
 
             <!-- Default is false for backwards compatibility. -->
-            <property name="hibernate.id.new_generator_mappings" value="true"/>
-            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
-            <property name="hibernate.show_sql" value="false"/>
-            <property name="hibernate.format_sql" value="false"/>
-            <property name="hibernate.use_sql_comments" value="false"/>
+            <property name="hibernate.id.new_generator_mappings" value="true" />
+            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect" />
+            <property name="hibernate.show_sql" value="false" />
+            <property name="hibernate.format_sql" value="false" />
+            <property name="hibernate.use_sql_comments" value="false" />
+
+            <!-- JDBC batching and write ordering -->
+            <property name="hibernate.jdbc.batch_size" value="50" />
+            <property name="hibernate.order_inserts" value="true" />
+            <property name="hibernate.order_updates" value="true" />
+
+            <!-- Optimize autocommit handling with HikariCP -->
+            <property name="hibernate.connection.provider_disables_autocommit" value="true" />
         </properties>
     </persistence-unit>
 </persistence>

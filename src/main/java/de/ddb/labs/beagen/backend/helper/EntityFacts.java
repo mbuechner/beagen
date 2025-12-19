@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2026 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,13 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  *
  * @author Michael Büchner
  */
+@Slf4j
 public class EntityFacts {
 
     private static final String EF_URL = "http://hub.culturegraph.org/entityfacts/";
@@ -34,8 +35,6 @@ public class EntityFacts {
             .writeTimeout(5, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .build();
-    // Logger
-    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(EntityFacts.class);
 
     private EntityFacts() {
     }
@@ -56,7 +55,7 @@ public class EntityFacts {
             final Response response = client.newCall(request).execute();
             return cleanEfId(response.request().url().toString());
         } catch (Exception ex) {
-            LOG.warn("Could not get data from Entity Facts. {}", ex.getMessage());
+            log.warn("Could not get data from Entity Facts. {}", ex.getMessage());
             return id;
         }
     }

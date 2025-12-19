@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2026 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import de.ddb.labs.beagen.backend.data.SECTOR.SectorSerializer;
 import de.ddb.labs.beagen.backend.data.TYPE.TypeSerializer;
 import de.ddb.labs.beagen.backend.helper.Configuration;
+import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,6 +45,7 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 import javax.persistence.Basic;
+import javax.persistence.FetchType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -52,23 +54,27 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Lob;
+import javax.persistence.Index;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Beacon file representation
  *
  * @author Michael Büchner
  */
+@Slf4j
 @Entity
-@Table(name = "BeaconFile")
+@Table(name = "BeaconFile", indexes = {
+    @Index(name = "idx_beacon_created", columnList = "created"),
+    @Index(name = "idx_beacon_type", columnList = "type"),
+    @Index(name = "idx_beacon_sector", columnList = "sector"),
+    @Index(name = "idx_beacon_type_sector_created", columnList = "type,sector,created")
+})
 public class BeaconFile implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    private static final Logger LOG = LoggerFactory.getLogger(BeaconFile.class);
     private static final String BEAGEN_BASEURL = "beagen.baseurl";
     private static final String API_ITEM_METHODE = "/item";
 
@@ -105,7 +111,7 @@ public class BeaconFile implements Serializable {
     @Column(name = "count")
     private int count;
 
-    @Basic(optional = false)
+    @Basic(optional = false, fetch = FetchType.LAZY)
     @Lob
     @Column(name = "content")
     @JsonIgnore
@@ -152,13 +158,13 @@ public class BeaconFile implements Serializable {
         try {
             baos.write(getBeaconHeader().getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            LOG.error("Could not serialze Beacon file header. {}", e.getMessage());
+            log.error("Could not serialze Beacon file header. {}", e.getMessage());
         }
 
         try (final GZIPInputStream stream = new GZIPInputStream(new ByteArrayInputStream(content))) {
             stream.transferTo(baos);
         } catch (IOException e) {
-            LOG.error("Could not decompress Beacon file from database. {}", e.getMessage(), e);
+            log.error("Could not decompress Beacon file from database. {}", e.getMessage(), e);
         } finally {
             try {
                 baos.close();

@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.ddb.labs</groupId>
     <artifactId>beagen</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.0</version>
     <packaging>jar</packaging>
     <name>Beagen</name>
     <description>Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek.</description>
@@ -39,34 +41,50 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-bom</artifactId>
+                <version>5.2.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
-            <version>6.3.0</version>
+            <version>6.7.0</version>
             <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>com.aayushatharva.brotli4j</groupId>
+            <artifactId>brotli4j</artifactId>
+            <version>1.20.0</version>
         </dependency>
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin-rendering</artifactId>
-            <version>6.3.0</version>
+            <version>6.7.0</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.17.2</version>
+            <version>2.20.1</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>2.17.2</version>
+            <version>2.20</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.17.2</version>
+            <version>2.20.1</version>
             <scope>compile</scope>
             <type>jar</type>
         </dependency>
@@ -78,19 +96,19 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.34</version>
+            <version>1.18.42</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.7</version>
+            <version>1.5.22</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
-            <version>2.3.2</version>
+            <version>2.5.2</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -111,12 +129,11 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>2.3.232</version>
+            <version>2.4.240</version>
         </dependency>
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp</artifactId>
-            <version>4.12.0</version>
+            <artifactId>okhttp-jvm</artifactId>
         </dependency>
     </dependencies>
     <reporting>
@@ -124,52 +141,59 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.6.2</version>
+                <version>4.9.3.0</version>
             </plugin>
         </plugins>
     </reporting>
     <build>
-        <finalName>beagen</finalName>    
+        <finalName>beagen</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
             </resource>
-        </resources>    
+        </resources>
         <plugins>
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.6.2</version>
+                <version>4.9.3.0</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.github.spotbugs</groupId>
                         <artifactId>spotbugs</artifactId>
-                        <version>4.8.6</version>
+                        <version>4.9.3</version>
                     </dependency>
                 </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.14.1</version>
                 <configuration>
                     <source>21</source>
                     <target>21</target>
                     <showDeprecation>true</showDeprecation>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.42</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.4.1</version>
+                <version>3.5.0</version>
                 <configuration>
                     <mainClass>de.ddb.labs.beagen.Main</mainClass>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
                 </configuration>
@@ -177,7 +201,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-site-plugin</artifactId>
-                <version>3.20.0</version>
+                <version>3.21.0</version>
                 <configuration>
                     <outputDirectory>${basedir}/docs</outputDirectory>
                 </configuration>
@@ -185,19 +209,19 @@
                     <dependency>
                         <groupId>com.bernardomg.maven.skins</groupId>
                         <artifactId>docs-maven-skin</artifactId>
-                        <version>2.3.2</version>
-                    </dependency> 
-                </dependencies>           
+                        <version>2.3.3</version>
+                    </dependency>
+                </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-project-info-reports-plugin</artifactId>
-                <version>3.7.0</version>
+                <version>3.9.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.7.1</version>
+                <version>3.8.0</version>
                 <configuration>
                     <archive>
                         <manifest>

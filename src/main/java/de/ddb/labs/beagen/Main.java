@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2026 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,6 +106,8 @@ public class Main {
         final Javalin app = Javalin.create(config -> {
             config.fileRenderer(new JavalinMustache());
             config.http.generateEtags = true;
+            // Enable Brotli and GZIP compression with moderate levels
+            config.http.brotliAndGzipCompression();
             config.bundledPlugins.enableCors(cors -> {
                 cors.addRule(it -> {
                     it.anyHost();

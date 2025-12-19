@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2026 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +18,21 @@ package de.ddb.labs.beagen.backend;
 import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
 import de.ddb.labs.beagen.backend.helper.EntityManagerUtil;
+import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
-import javax.persistence.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.persistence.TypedQuery;
 
 /**
  * Database handler for Beacon files
  *
  * @author Michael Büchner
  */
+@Slf4j
 public class BeaconFileController {
-
-    private static final Logger LOG = LoggerFactory.getLogger(BeaconFileController.class);
 
     private BeaconFileController() {
     }
@@ -51,16 +49,16 @@ public class BeaconFileController {
         final EntityTransaction tx = em.getTransaction();
         tx.begin();
         try {
-            final Query q2 = em.createQuery("SELECT f FROM BeaconFile AS f WHERE f.id = :myid", BeaconFile.class);
+            final TypedQuery<BeaconFile> q2 = em.createQuery("SELECT f FROM BeaconFile AS f WHERE f.id = :myid", BeaconFile.class);
             q2.setParameter("myid", id);
             q2.setMaxResults(1);
             if (!q2.getResultList().isEmpty()) {
-                return (BeaconFile) q2.getResultList().get(0);
+                return q2.getResultList().get(0);
             } else {
                 return null;
             }
         } catch (Exception e) {
-            LOG.error("Could not get Beacon file. {}", e.getMessage(), e);
+            log.error("Could not get Beacon file. {}", e.getMessage(), e);
             return null;
         } finally {
             tx.commit();
@@ -97,7 +95,7 @@ public class BeaconFileController {
         final EntityTransaction tx = em.getTransaction();
         tx.begin();
         try {
-            final Query q2 = em.createQuery(qs, BeaconFile.class);
+            final TypedQuery<BeaconFile> q2 = em.createQuery(qs, BeaconFile.class);
 
             if (onlyLatest && lastDate != null) {
                 q2.setParameter("lastDate", lastDate);
@@ -114,7 +112,7 @@ public class BeaconFileController {
             final List<BeaconFile> result = q2.getResultList();
             return result;
         } catch (Exception e) {
-            LOG.error("Could not get Beacon files. {}", e.getMessage(), e);
+            log.error("Could not get Beacon files. {}", e.getMessage(), e);
             return new ArrayList<>();
         } finally {
             tx.commit();
@@ -145,11 +143,8 @@ public class BeaconFileController {
         final EntityTransaction tx = em.getTransaction();
         tx.begin();
         try {
-            final Query q2 = em.createQuery(qs, BeaconFile.class);
+            final TypedQuery<BeaconFile> q2 = em.createQuery(qs, BeaconFile.class);
             q2.setParameter("mysector", sector);
-            if (onlyLatest) {
-                q2.setMaxResults(1);
-            }
             if (type != null) {
                 q2.setParameter("type", type);
             }
@@ -175,27 +170,24 @@ public class BeaconFileController {
      * @return Date of last Beacon file update
      */
     public static Date getLastDate(TYPE type) {
-        String qs = "SELECT f FROM BeaconFile AS f ";
+        String qs = "SELECT MAX(f.created) FROM BeaconFile AS f ";
 
         if (type != null) {
             qs += "WHERE f.type = :type ";
         }
 
-        qs += "ORDER BY f.created DESC ";
-
         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
         final EntityTransaction tx = em.getTransaction();
         tx.begin();
         try {
-            final Query q2 = em.createQuery(qs, BeaconFile.class);
+            final TypedQuery<Date> q2 = em.createQuery(qs, Date.class);
             if (type != null) {
                 q2.setParameter("type", type);
             }
-            q2.setMaxResults(1);
-            final BeaconFile result = (BeaconFile) q2.getResultList().get(0);
-            return result.getCreated();
+            final List<Date> result = q2.getResultList();
+            return result.isEmpty() ? null : result.get(0);
         } catch (Exception e) {
-            LOG.warn("Could not get latest date for Beacon files. {}. Maybe there's no data yet?", e.getMessage());
+            log.warn("Could not get latest date for Beacon files. {}. Maybe there's no data yet?", e.getMessage());
             return null;
         } finally {
             tx.commit();

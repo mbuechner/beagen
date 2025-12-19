@@ -4,8 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta content="Michael Büchner" name="author">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/spacelab/bootstrap.min.css" integrity="sha384-7jv7Cz/bPqbBsJ7CBCt/XsB6OhMa69zEjBu9ACVWol2jJYKJVLAwvUJVozygdb0e" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/bootstrap-table.min.css" integrity="sha256-ORnldD5YVLDWZEuWfzftDJTjhdNUi3GKMdclqKNf6Rg=" crossorigin="anonymous">
+    <meta name="description" content="Beagen – BEACON-Datei-Generator der Deutschen Digitalen Bibliothek">
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/spacelab/bootstrap.min.css" integrity="sha256-DJuTtrnkM7UA6ptLT9fJumXkYY5NovkL55ITeigpSsI=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.26.0/dist/bootstrap-table.min.css" integrity="sha256-uLMa6GgXUJn6/gA5k+tW0UO/pDuSG3WuZk0x5FA5CV0=" crossorigin="anonymous">
     <title>Beagen - Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</title>
   </head>
   <body>
@@ -16,7 +20,7 @@
         </h1>
         <p class="lead">Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</p>
         <hr class="my-4">
-        <div id="alert_placeholder"></div>
+        <div id="alert_placeholder" aria-live="polite"></div>
         <div class="row">
           <div class="col-md-4">
             <label class="col-form-label" for="selectType">Typ</label>
@@ -40,7 +44,7 @@
             </select>
           </div>
           <div class="col-md-4 align-self-end">
-            <a class="btn btn-primary mt-3" href="" id="showBtn" role="button">Anzeigen</a>
+            <a class="btn btn-primary mt-3" href="" id="showBtn" role="button" aria-label="Auswahl anzeigen">Anzeigen</a>
           </div>
           <div class="col-md-12 mt-2">
             <div class="form-check form-switch">
@@ -53,7 +57,7 @@
         <p id="message"></p>
         <div class="row d-none" id="beaconTableRow">
           <div class="table-responsive">
-            <table class="table table-hover table-striped" data-locale="de-DE" id="beaconTable">
+            <table class="table table-hover table-striped" data-locale="de-DE" id="beaconTable" aria-label="Beacon-Dateien">
               <thead>
                 <tr>
                   <th data-field="type.name" data-sortable="true" scope="col">Typ</th>
@@ -76,121 +80,127 @@
         </div>
       </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/dist/bootstrap-table.min.js" integrity="sha256-yU4LPMId2rUUeuqMPU/C8NX2CPzt46ofELxWqll6ZBU=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.23.2/src/locale/bootstrap-table-de-DE.js" integrity="sha384-SffFTDdNyjN8vhFblL+RK+GaJg2uWp/tsWu1WZ4sYZXmGgKyH72og9tTuFuNHkgy" crossorigin="anonymous"></script>
+    <script defer src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha256-ew8UiV1pJH/YjpOEBInP1HxVvT/SfrCmwSoUzF9JIgc=" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha256-SERKgtTty1vsDxll+qzd4Y2cF9swY9BCq62i9wXJ9Uo=" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.26.0/dist/bootstrap-table.min.js" integrity="sha256-xabDwMgd2Y9OMtbGJbCymALBRoc3hN3xYBDv+sfY4OY" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.26.0/dist/locale/bootstrap-table-de-DE.min.js" integrity="sha256-aQiiNM95/OAlqnC7hbQd2ViNd4BK2Z1jrYgjUjv4C64" crossorigin="anonymous"></script>
     <script>
-      function linkFormatter(value) {
-        return '<a href="' + value.trim() + '">' + value.trim() + "</a>";
-      }
-      const getUrlParameter = function getUrlParameter(sParam) {
-        let sPageURL = window.location.search.substring(1);
-        let sURLVariables = sPageURL.split("&");
-        for (let i = 0; i < sURLVariables.length; i = i + 1) {
-          let sParameterName = sURLVariables[i].split("=");
-          if (sParameterName[0] === sParam) {
-            return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+      // Ensure inline code runs after deferred libraries load
+      document.addEventListener('DOMContentLoaded', function () {
+        // Expose formatter globally for bootstrap-table's data-formatter lookup
+        window.linkFormatter = function (value, row, index) {
+          const v = String(value || '').trim();
+          const href = encodeURI(v);
+          return '<a href="' + href + '" rel="noopener">' + v + "</a>";
+        };
+        const getUrlParameter = function getUrlParameter(sParam) {
+          let sPageURL = window.location.search.substring(1);
+          let sURLVariables = sPageURL.split("&");
+          for (let i = 0; i < sURLVariables.length; i = i + 1) {
+            let sParameterName = sURLVariables[i].split("=");
+            if (sParameterName[0] === sParam) {
+              return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+            }
           }
-        }
-      };
-      const bootstrap_alert = function (message, link) {
-        let html = '<div class="alert alert-primary alert-dismissible fade show" role="alert">' + message;
-        if (typeof link !== "undefined") {
-          html += '<a class="alert-link" href="' + link + '">' + link + "</a>";
-        }
-        html += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schliessen"></button></div>';
-        $("#alert_placeholder").html(html);
-      };
-      $("#selectSector, #selectType, #selectorAll").change(function () {
-        let typ = "type=" + ($("#selectType").val() ? $("#selectType").val() : $("#selectType option:first").val());
-        let sec = "sector=" + ($("#selectSector").val() ? $("#selectSector").val() : $("#selectSector option:first").val());
-        let que = typ + (typ && sec ? "&" + sec : sec);
-        let url = $(location).attr("href").split("?")[0];
-        url = url.substring(url.length - 1) === "/" ? url.substring(0, url.length - 1) : url;
-        url = url.endsWith("/latest") ? url.substring(0, url.length - 7) : url;
-        url = url.endsWith("/list") ? url : url + "/list";
-        url = url + ($("#selectorAll").prop("checked") === true ? "/latest" : "");
-        $("#showBtn").attr("href", url + "?" + que);
-        if (typ === "type=newspaper") {
-          $("#selectSector").attr("disabled", "disabled");
-          $("#selectSector").val("all");
-        } else {
-          $("#selectSector").removeAttr("disabled");
-        }
-      });
-      $("#showBtn").click(function () {
-        $("#selectSector").trigger("change");
-      });
-      $(document).ready(function () {
-        $("#selectSector").val(getUrlParameter("sector") ? getUrlParameter("sector") : "all");
-        $("#selectType").val(getUrlParameter("type") ? getUrlParameter("type") : "organisation");
-        if (getUrlParameter("type") === "newspaper") {
-          $("#selectSector").attr("disabled", "disabled");
-        } else {
-          $("#selectSector").removeAttr("disabled");
-        }
-        const url = $(location).attr("href");
-        let endIndex = url.indexOf("?") === -1 ? url.length : url.indexOf("?");
-        let url_parts = url
-          .substring(0, endIndex)
-          .split("/")
-          .filter(function (str) {
-            return str !== "";
-          });
-        if (url_parts[url_parts.length - 1] === "latest") {
-          $("#selectorAll").prop("checked", true);
-          if ($("#selectSector").val() && $("#selectType").val() && $("#selectType").val() !== "all") {
-            var baseUrl = $(location).attr("href").substring(0, $(location).attr("href").indexOf("list/"));
-            bootstrap_alert("Für die Auswahl gib es einen <strong>symbolischen Link</strong>, der immer " + " direkt auf die aktuellste Beacon-Datei führt: ", baseUrl + "item/" + $("#selectType").val() + "/" + $("#selectSector").val() + "/latest");
+        };
+        const bootstrap_alert = function (message, link) {
+          let html = '<div class="alert alert-primary alert-dismissible fade show" role="alert">' + message;
+          if (typeof link !== "undefined") {
+            html += '<a class="alert-link" href="' + link + '">' + link + "</a>";
           }
-        } else {
-          $("#selectorAll").prop("checked", false);
-        }
-        $.getJSON(url + (url.indexOf("?") === -1 ? "?" : "&") + "rnd=" + Math.random(), function (data) {
-          $("#beaconTableRow").removeClass("d-none");
-          $("#beaconTable").bootstrapTable({
-            data: data,
-          });
-          if ($("#selectorAll").prop("checked") === false) {
-            let chartDataLabel = [];
-            let chartDataCount = [];
-            $.each(data, function (key1, value1) {
-              let count = "";
-              let created = "";
-              $.each(value1, function (key2, value2) {
-                if (key2 === "created") {
-                  created = value2.indexOf("T") === -1 ? value2 : value2.substring(0, value2.indexOf("T"));
-                } else if (key2 === "count") {
-                  count = value2;
-                }
-              });
-              chartDataLabel.unshift(created);
-              chartDataCount.unshift(count);
+          html += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schliessen"></button></div>';
+          $("#alert_placeholder").html(html);
+        };
+        $("#selectSector, #selectType, #selectorAll").change(function () {
+          let typ = "type=" + ($("#selectType").val() ? $("#selectType").val() : $("#selectType option:first").val());
+          let sec = "sector=" + ($("#selectSector").val() ? $("#selectSector").val() : $("#selectSector option:first").val());
+          let que = typ + (typ && sec ? "&" + sec : sec);
+          let url = $(location).attr("href").split("?")[0];
+          url = url.substring(url.length - 1) === "/" ? url.substring(0, url.length - 1) : url;
+          url = url.endsWith("/latest") ? url.substring(0, url.length - 7) : url;
+          url = url.endsWith("/list") ? url : url + "/list";
+          url = url + ($("#selectorAll").prop("checked") === true ? "/latest" : "");
+          $("#showBtn").attr("href", url + "?" + que);
+          if (typ === "type=newspaper") {
+            $("#selectSector").attr("disabled", "disabled");
+            $("#selectSector").val("all");
+          } else {
+            $("#selectSector").removeAttr("disabled");
+          }
+        });
+        $("#showBtn").click(function () {
+          $("#selectSector").trigger("change");
+        });
+        $(document).ready(function () {
+          $("#selectSector").val(getUrlParameter("sector") ? getUrlParameter("sector") : "all");
+          $("#selectType").val(getUrlParameter("type") ? getUrlParameter("type") : "organisation");
+          if (getUrlParameter("type") === "newspaper") {
+            $("#selectSector").prop("disabled", true);
+          } else {
+            $("#selectSector").prop("disabled", false);
+          }
+          const url = $(location).attr("href");
+          let endIndex = url.indexOf("?") === -1 ? url.length : url.indexOf("?");
+          let url_parts = url
+            .substring(0, endIndex)
+            .split("/")
+            .filter(function (str) {
+              return str !== "";
             });
-            let datasetObj = {};
-            datasetObj.label = "Entwicklung der Anzahl";
-            datasetObj.data = chartDataCount;
-            let chartData = {};
-            chartData.labels = chartDataLabel;
-            chartData.datasets = [datasetObj];
-            $("#chartRow").removeClass("d-none");
-            new Chart($("#beaconChart")[0].getContext("2d"), {
-                type: "line",
-                data: chartData,
-                options: {
-                  scales: {
-                    y: {
-                      beginAtZero: true,
+          if (url_parts[url_parts.length - 1] === "latest") {
+            $("#selectorAll").prop("checked", true);
+            if ($("#selectSector").val() && $("#selectType").val() && $("#selectType").val() !== "all") {
+              var baseUrl = $(location).attr("href").substring(0, $(location).attr("href").indexOf("list/"));
+              bootstrap_alert("Für die Auswahl gib es einen <strong>symbolischen Link</strong>, der immer " + " direkt auf die aktuellste Beacon-Datei führt: ", baseUrl + "item/" + $("#selectType").val() + "/" + $("#selectSector").val() + "/latest");
+            }
+          } else {
+            $("#selectorAll").prop("checked", false);
+          }
+          $.getJSON(url + (url.indexOf("?") === -1 ? "?" : "&") + "rnd=" + Math.random(), function (data) {
+            $("#beaconTableRow").removeClass("d-none");
+            $("#beaconTable").bootstrapTable({
+              data: data,
+            });
+            if ($("#selectorAll").prop("checked") === false) {
+              let chartDataLabel = [];
+              let chartDataCount = [];
+              $.each(data, function (key1, value1) {
+                let count = "";
+                let created = "";
+                $.each(value1, function (key2, value2) {
+                  if (key2 === "created") {
+                    created = value2.indexOf("T") === -1 ? value2 : value2.substring(0, value2.indexOf("T"));
+                  } else if (key2 === "count") {
+                    count = value2;
+                  }
+                });
+                chartDataLabel.unshift(created);
+                chartDataCount.unshift(count);
+              });
+              let datasetObj = {};
+              datasetObj.label = "Entwicklung der Anzahl";
+              datasetObj.data = chartDataCount;
+              let chartData = {};
+              chartData.labels = chartDataLabel;
+              chartData.datasets = [datasetObj];
+              $("#chartRow").removeClass("d-none");
+              new Chart($("#beaconChart")[0].getContext("2d"), {
+                  type: "line",
+                  data: chartData,
+                  options: {
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                      },
                     },
                   },
-                },
-              });
-          }
-        }).fail(function (data) {
-          bootstrap_alert("<strong>Fehler " + data.status + "</strong>, " + data.statusText + " :-(<br>" + JSON.parse(data.responseText).title);
+                });
+            }
+          }).fail(function (data) {
+            bootstrap_alert("<strong>Fehler " + data.status + "</strong>, " + data.statusText + " :-(<br>" + JSON.parse(data.responseText).title);
+          });
         });
       });
     </script>

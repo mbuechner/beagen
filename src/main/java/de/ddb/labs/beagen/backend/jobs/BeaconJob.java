@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2026 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,17 +47,17 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.PersistenceException;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Michael Büchner
  */
+@Slf4j
 @DisallowConcurrentExecution
 public class BeaconJob implements Job {
 
@@ -91,9 +91,6 @@ public class BeaconJob implements Job {
             + "&wt=csv"
             + "&fl=id"
             + "&sort=id ASC";
-
-    // Logger
-    private static final Logger LOG = LoggerFactory.getLogger(BeaconJob.class);
 
     /**
      *
@@ -129,7 +126,7 @@ public class BeaconJob implements Job {
                 count++;
             }
         } catch (Exception ex) {
-            LOG.error("Error while processing entity data of Newspaper. {}", ex.getMessage());
+            log.error("Error while processing entity data of Newspaper. {}", ex.getMessage());
         }
 
         try {
@@ -142,7 +139,7 @@ public class BeaconJob implements Job {
         final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(TYPE.NEWSPAPER, SECTOR.ALL, true);
 
         if (lastBeaconinDatabaseList.isEmpty() || !bf.equals(lastBeaconinDatabaseList.get(0))) {
-            LOG.info("Writing {} entities of {} to database. Beacon file size is {}", count, SECTOR.ALL.getHumanName(), baos.size());
+            log.info("Writing {} entities of {} to database. Beacon file size is {}", count, SECTOR.ALL.getHumanName(), baos.size());
             final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
             final EntityTransaction tx = em.getTransaction();
             tx.begin();
@@ -150,7 +147,7 @@ public class BeaconJob implements Job {
             tx.commit();
             em.close();
         } else {
-            LOG.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", TYPE.NEWSPAPER, SECTOR.ALL);
+            log.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", TYPE.NEWSPAPER, SECTOR.ALL);
         }
 
         try {
@@ -168,9 +165,9 @@ public class BeaconJob implements Job {
      * @param date Date to set for BEACOn files
      */
     public void execute(TYPE type, SECTOR[] sectors, Date date) {
-        LOG.info("Start BEACON maker job for {}...", type);
+        log.info("Start BEACON maker job for {}...", type);
         if (SEARCH.get(type) == null || SEARCH.get(type).isEmpty()) {
-            LOG.warn("Could not generate search query for type {}. Generation of Beacon file(s) canceled.", type);
+            log.warn("Could not generate search query for type {}. Generation of Beacon file(s) canceled.", type);
             return;
         }
 
@@ -190,16 +187,16 @@ public class BeaconJob implements Job {
 
             final List<EntityCounts> data = getDataFromDdbApi(type);
 
-            LOG.info("Start generating Beacon files of type {}...", type);
+            log.info("Start generating Beacon files of type {}...", type);
 
             int count = 0;
 
             for (final Iterator<EntityCounts> it = data.iterator(); it.hasNext();) {
 
                 if (count == data.size() - 1) {
-                    LOG.info("{} data processed: {}/{}", type, (count + 1), data.size());
+                    log.info("{} data processed: {}/{}", type, (count + 1), data.size());
                 } else if (count % 10000 == 0) {
-                    LOG.info("{} data processed: {}/{}", type, count, data.size());
+                    log.info("{} data processed: {}/{}", type, count, data.size());
                 }
                 count++;
 
@@ -223,7 +220,7 @@ public class BeaconJob implements Job {
                                 && ex.getVariant_id().get(0).toLowerCase().startsWith("https://d-nb.info/gnd/")) {
                             id = EntityFacts.getGndId(ex.getVariant_id().get(0).substring(22));
                         } else {
-                            LOG.warn("Could not get any GND-ID of {}. That should never happen!", id);
+                            log.warn("Could not get any GND-ID of {}. That should never happen!", id);
                             continue;
                         }
 
@@ -235,7 +232,7 @@ public class BeaconJob implements Job {
                 }
             }
 
-            LOG.info("Done generating Beacon files of type {}.", type);
+            log.info("Done generating Beacon files of type {}.", type);
 
             for (SECTOR sector : sectors) {
                 writers.get(sector).close();
@@ -250,7 +247,7 @@ public class BeaconJob implements Job {
 
                     final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(type, sector, true);
                     if (lastBeaconinDatabaseList.isEmpty() || !files_sector.equals(lastBeaconinDatabaseList.get(0))) {
-                        LOG.info("Writing {} entities of {} to database. Beacon file size is {}", counts.get(sector), sector.getHumanName(), byteStreams.get(sector).size());
+                        log.info("Writing {} entities of {} to database. Beacon file size is {}", counts.get(sector), sector.getHumanName(), byteStreams.get(sector).size());
                         final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
                         final EntityTransaction tx = em.getTransaction();
                         tx.begin();
@@ -258,16 +255,16 @@ public class BeaconJob implements Job {
                         tx.commit();
                         em.close();
                     } else {
-                        LOG.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", type, sector);
+                        log.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", type, sector);
                     }
                 }
                 byteStreams.get(sector).close();
             }
         } catch (ParseException | IOException | PersistenceException ex) {
-            LOG.error("Error while processing entity data. {}", ex.getMessage());
+            log.error("Error while processing entity data. {}", ex.getMessage());
         }
 
-        LOG.info("BEACON maker job finished.");
+        log.info("BEACON maker job finished.");
     }
 
     private List<EntityCounts> getDataFromDdbApi(TYPE type) throws IOException, ParseException {
@@ -280,7 +277,7 @@ public class BeaconJob implements Job {
         while (true) {
             final String url = baseUrl + "&cursorMark=" + URLEncoder.encode(nextCursorMark, Charset.forName("UTF-8"));
             final InputStream is = DDBApi.httpGet(url);
-            LOG.debug("Query: {}", url);
+            log.debug("Query: {}", url);
 
             final JsonNode doc = mapper.readTree(is);
             final String nextCursorMarkLocal = doc.get("nextCursorMark").asText("");
@@ -295,17 +292,17 @@ public class BeaconJob implements Job {
             list.addAll(ec);
 
             if (list.size() % 10000 == 0) {
-                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), totalCount);
+                log.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), totalCount);
             } else if (list.size() == totalCount) {
                 // last logging
-                LOG.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), list.size());
+                log.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), list.size());
             }
 
             if (nextCursorMark.isBlank() || list.size() == totalCount) {
                 break;
             }
         }
-        LOG.info("Got {} GND-URIs from DDB API", list.size());
+        log.info("Got {} GND-URIs from DDB API", list.size());
         return list;
     }
 
@@ -342,12 +339,16 @@ public class BeaconJob implements Job {
         @Setter
         private int count_sec_07;
 
+        // Used by Jackson during deserialization
+        @SuppressWarnings("unused")
         public EntityCounts() {
             this.variant_id = new ArrayList<>();
         }
 
+        @SuppressWarnings("unused")
         public EntityCounts(String id, int count) {
             this.id = id;
+            this.count = count;
             this.variant_id = new ArrayList<>();
         }
 

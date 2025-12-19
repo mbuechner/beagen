@@ -1,5 +1,5 @@
 /* 
- * Copyright 2019-2024 Michael Büchner, Deutsche Digitale Bibliothek
+ * Copyright 2019-2026 Michael Büchner, Deutsche Digitale Bibliothek
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,16 +22,15 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  *
  * @author Michael Büchner
  */
+@Slf4j
 public class DDBApi {
 
-    // Logger
-    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(DDBApi.class);
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
             .callTimeout(360, TimeUnit.SECONDS)
@@ -54,7 +53,7 @@ public class DDBApi {
             }
             return response.body().byteStream();
         } catch (Exception ex) {
-            LOG.warn("Could not get data from Entity Facts for {}. {}", urlStr, ex.getMessage());
+            log.warn("Could not get data from Entity Facts for {}. {}", urlStr, ex.getMessage());
             return null;
         }
     }
