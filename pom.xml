@@ -47,13 +47,6 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp-bom</artifactId>
-                <version>5.5.1</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
                 <groupId>tools.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>3.3.0</version>
@@ -67,12 +60,12 @@
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
             <version>${javalin.version}</version>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.aayushatharva.brotli4j</groupId>
             <artifactId>brotli4j</artifactId>
             <version>1.24.0</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.javalin</groupId>
@@ -82,18 +75,14 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <scope>compile</scope>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -105,13 +94,12 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.6.7</version>
-            <type>jar</type>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
             <version>2.5.2</version>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.hibernate.orm</groupId>
@@ -122,16 +110,19 @@
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-hikaricp</artifactId>
             <version>${hibernate.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <!-- H2 2.5.250 and 2.5.252 can lose committed data after crashes (h2database/h2database#4446). -->
             <version>2.4.240</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp-jvm</artifactId>
+            <version>5.5.1</version>
         </dependency>
     </dependencies>
     <reporting>
@@ -194,13 +185,6 @@
                 <configuration>
                     <outputDirectory>${basedir}/docs</outputDirectory>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.bernardomg.maven.skins</groupId>
-                        <artifactId>docs-maven-skin</artifactId>
-                        <version>2.4.1</version>
-                    </dependency>
-                </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -216,6 +200,9 @@
                         <manifest>
                             <mainClass>de.ddb.labs.beagen.Main</mainClass>
                         </manifest>
+                        <manifestEntries>
+                            <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+                        </manifestEntries>
                     </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
