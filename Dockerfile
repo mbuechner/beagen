@@ -2,11 +2,11 @@ FROM maven:3-eclipse-temurin-25-alpine AS maven_chain
 COPY pom.xml /tmp/
 COPY src /tmp/src/
 WORKDIR /tmp/
-RUN mvn clean package
+RUN mvn -B -ntp clean verify
 
 FROM eclipse-temurin:25-jre-noble
 RUN mkdir /home/beagen
-COPY --from=maven_chain /tmp/target/beagen.jar /home/beagen/beagen.jar
+COPY --from=maven_chain /tmp/target/beagen.jar /tmp/target/beagen-sbom.json /home/beagen/
 WORKDIR /home/beagen/
 CMD ["java", "-Xms512M", "-Xmx1G", "-jar", "beagen.jar"]
 

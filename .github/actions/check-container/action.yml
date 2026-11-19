@@ -1,0 +1,91 @@
+name: Check Beagen container
+description: Verify HTTP startup and scan the running image and resolved Maven dependencies.
+
+inputs:
+  image:
+    description: Local tag or pulled registry digest to test and scan.
+    required: true
+  block-on-fixable:
+    description: Fail on fixable High or Critical findings covered by the release policy.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Smoke-test the container as a non-root user and extract its SBOM
+      id: smoke
+      env:
+        IMAGE: ${{ inputs.image }}
+      shell: bash
+      run: |
+        container="$(docker run --detach --user 10001:0 --publish 127.0.0.1::8080 \
+          --env 'beagen.database=mem:ci;DB_CLOSE_DELAY=-1' \
+          --env 'beagen.cron=0 0 0 1 1 ? 2099' "$IMAGE")"
+        trap 'docker logs "$container"; docker rm -f "$container" >/dev/null' EXIT
+
+        url="http://$(docker port "$container" 8080/tcp)"
+        curl --fail --silent --show-error --retry 25 --retry-connrefused --retry-delay 1 --max-time 5 \
+          --header 'Accept: application/json' "$url/list/latest" | jq -e '. == []'
+        curl --fail --silent --show-error --header 'Accept: text/html' "$url/list/latest" \
+          --output "$RUNNER_TEMP/beagen-smoke.html"
+        grep -qi '<!DOCTYPE html>' "$RUNNER_TEMP/beagen-smoke.html"
+
+        sbom="$RUNNER_TEMP/beagen-maven-sbom.json"
+        docker cp "$container:/home/beagen/beagen-sbom.json" "$sbom"
+        jq -e '.bomFormat == "CycloneDX" and (.components | length > 0)' "$sbom" >/dev/null
+        echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
+
+    - name: Scan image for known vulnerabilities
+      id: image-scan
+      uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+      with:
+        image: ${{ inputs.image }}
+        output-format: json
+        fail-build: false
+        by-cve: true
+
+    - name: Scan resolved Maven dependencies from the image SBOM
+      id: maven-scan
+      uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+      with:
+        sbom: ${{ steps.smoke.outputs.sbom }}
+        output-format: json
+        fail-build: false
+        by-cve: true
+
+    - name: Summarize findings and apply release policy
+      env:
+        IMAGE_SCAN: ${{ steps.image-scan.outputs.json }}
+        MAVEN_SCAN: ${{ steps.maven-scan.outputs.json }}
+        BLOCK_ON_FIXABLE: ${{ inputs.block-on-fixable }}
+      shell: bash
+      run: |
+        for result in "$IMAGE_SCAN" "$MAVEN_SCAN"; do
+          jq -e '.matches | type == "array"' "$result" >/dev/null
+        done
+        findings="$(jq --slurp '
+          [.[].matches[] | select(.vulnerability.severity == "High" or .vulnerability.severity == "Critical")]
+          | unique_by(.vulnerability.id, .artifact.type, .artifact.name, .artifact.version, .vulnerability.namespace, .vulnerability.fix.state)
+        ' "$IMAGE_SCAN" "$MAVEN_SCAN")"
+        # Ubuntu's OpenSSL and util-linux packages can carry backported upstream fixes.
+        # Use Ubuntu's package advisories for these packages and still report their generic CPE matches.
+        fixable="$(jq '
+          [.[] | select(.vulnerability.fix.state == "fixed") | select(
+            (.artifact.type == "binary" and .vulnerability.namespace == "nvd:cpe"
+              and (.artifact.name == "openssl" or .artifact.name == "util-linux")) | not
+          )] | length
+        ' <<< "$findings")"
+        {
+          echo '### High and Critical vulnerabilities'
+          echo
+          echo "| Advisory | Package | Installed | Source | Severity | Fixed versions |"
+          echo "| --- | --- | --- | --- | --- | --- |"
+          jq -r '.[] | "| \(.vulnerability.id) | \(.artifact.name) | \(.artifact.version) | \(.artifact.type) | \(.vulnerability.severity) | \((.vulnerability.fix.versions // []) | join(", ")) |"' <<< "$findings"
+          echo
+          echo "Fixable findings covered by the release gate: $fixable"
+          echo 'Generic OpenSSL and util-linux CPE matches are advisory. Ubuntu package findings still apply.'
+        } >> "$GITHUB_STEP_SUMMARY"
+        if [[ "$BLOCK_ON_FIXABLE" == 'true' && "$fixable" -gt 0 ]]; then
+          echo "::error::Fixable High or Critical vulnerabilities block promotion. See the job summary."
+          exit 1
+        fi

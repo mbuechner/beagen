@@ -1,79 +1,36 @@
-![Java CI with Maven](https://github.com/mbuechner/beagen/workflows/Java%20CI%20with%20Maven/badge.svg) ![Docker](https://github.com/mbuechner/beagen/workflows/Docker/badge.svg)
-# Beagen: A Beacon file generator for Deutsche Digitale Bibliothek
-A Beacon file generator for [Deutsche Digitale Bibliothek](https://www.deutsche-digitale-bibliothek.de/). For more information about Beacon files see [this draft](http://gbv.github.io/beaconspec/beacon.html).
+# Beagen
 
-*Visit Beagen at DDBlabs:* https://labs.ddb.de/app/beagen
-## See also
-- GitHub: https://github.com/mbuechner/beagen
-- Maven site: https://mbuechner.github.io/beagen/ 
+[Deutsche Digitale Bibliothek](https://www.deutsche-digitale-bibliothek.de/) → Quartz import → gzip BEACON files in H2 → Javalin downloads and HTML/JSON history. [Live](https://labs.ddb.de/app/beagen)
 
-## Screenshot
-![Screenshot of Beagen](beagen.png "Beagen")
-
-# Docker
-
-Run the image from GitHub Container Registry.
+## Run
 
 ```sh
-docker run -d -p 8080:8080 \
-    --volume beagen:/home/beagen/files \
-    ghcr.io/mbuechner/beagen:latest
+docker run --rm -p 8080:8080 -v beagen:/home/beagen/files \
+  ghcr.io/mbuechner/beagen:latest
 ```
 
-Open http://localhost:8080/. Reuse the `beagen` volume when replacing the container to retain the H2 database.
+Open `http://localhost:8080/`. The volume persists H2 across container replacements.
 
-## Environment variables
-
-| Variable | Description |
-|----------|-------------|
-| `beagen.baseurl` | Public URL used to construct BEACON links, without a trailing slash. Defaults to `http://localhost:8080`. |
-| `beagen.pathprefix` | Application path prefix, such as `/beagen` when the proxy forwards that prefix. Defaults to an empty prefix. |
-| `beagen.port` | HTTP listening port. Defaults to `8080`. |
-| `beagen.cron` | [Quartz cron expression](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html) for checking for DDB updates. Defaults to daily at noon. |
-| `beagen.database` | H2 JDBC URL suffix (the part after `jdbc:h2:`). The default file is stored under `./files/database/`. |
-
-## Container build
-
-To build and run the image locally, run these commands.
+Use Java 25 and Maven 3.9+ for local development.
 
 ```sh
-git clone https://github.com/mbuechner/beagen
-cd beagen
-docker build -t beagen .
-docker run -d -p 8080:8080 \
-    --volume beagen:/home/beagen/files \
-    beagen
+mvn clean verify && java -jar target/beagen.jar
 ```
 
-## Docker stack
+See [defaults](src/main/resources/beagen.cfg) for `beagen.port`, `beagen.cron` and `beagen.database`. Behind a reverse proxy, set `beagen.baseurl` to the public URL and `beagen.pathprefix` to the forwarded prefix. Set all five via environment variables.
 
-Use the following configuration for a single-node [Docker Swarm](https://docs.docker.com/engine/swarm/stack-deploy/).
+## From PR to OpenShift
 
-```yaml
-version: "3.8"
-services:
-  beagen:
-    image: ghcr.io/mbuechner/beagen:latest
-    volumes:
-      - beagen:/home/beagen/files
-    ports:
-      - "8080:8080"
-volumes:
-  beagen:
-```
+OpenShift tracks the same `latest` image shown above. The daily build batches merged code and dependency changes with any base-image updates.
 
-# Maven
+1. PRs run `mvn verify`. Dependabot checks daily and bundles Maven minor and patch updates into one routine PR. Pushes and bot merges on `master` refresh the Maven dependency graph.
+2. At **08:17 Europe/Berlin**, CI pulls fresh Java 25 base images and builds `master`. A non-root smoke test and [CVE scans of the image and Maven SBOM](.github/actions/check-container/action.yml) gate signing with Cosign.
+3. GHCR moves `latest` when the signed digest changes. OpenShift rolls it out on the next poll.
 
-Beagen uses Java 25 LTS (JDK) and Maven 3.9 or later. To build the executable JAR, run this command from the directory containing `pom.xml`.
+Push a Git tag like `v1.9.1` for an immutable release image. For an urgent `latest` build, use **Actions → Docker → Run workflow** on `master`.
 
-```sh
-mvn clean package
-```
+### Dependabot settings
 
-Start the web server with this command and open http://localhost:8080/.
+Optional auto-merge uses `DEPENDABOT_AUTO_MERGE=true`, squash merges and the required **Maven verify** check on `master`. Remove **Container verification** from existing required checks.
 
-```sh
-java -jar target/beagen.jar
-```
-
-To use the development settings, including the once-per-minute update schedule, start with `java -Dbeagen.dev=true -jar target/beagen.jar`.
+For Critical-only security PRs, keep Dependabot alerts on, turn broad security updates off and [set an auto-triage rule](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/auto-triage-dependabot-alerts) to open PRs for Critical alerts with a fix. Filter email using `X-GitHub-Severity: critical`.

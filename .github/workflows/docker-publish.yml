@@ -2,97 +2,125 @@ name: Docker
 
 on:
   push:
-    branches: [ "master" ]
-    # Publish semver tags as releases.
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ "master" ]
+    tags: ['v*']
+  schedule:
+    - cron: '17 8 * * *'
+      timezone: Europe/Berlin
+  workflow_dispatch:
 
-env:
-  # Use docker.io for Docker Hub if empty
-  REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ github.repository }}
+permissions:
+  contents: read
 
+concurrency:
+  group: docker-${{ github.ref_type == 'tag' && 'release-tags' || github.ref }}
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  publish:
+    name: Publish checked image to GHCR
+    if: github.ref == 'refs/heads/master' || (github.event_name == 'push' && github.ref_type == 'tag')
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
       id-token: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Install the cosign tool except on PR
-      # https://github.com/sigstore/cosign-installer
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          cosign-release: 'v2.2.4'
-
-      # Set up BuildKit Docker container builder to be able to build
-      # multi-platform images and export cache
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+          persist-credentials: false
+      - name: Set image name and reproducible build timestamps
+        id: source
+        shell: bash
+        run: |
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "epoch=$(git show -s --format=%ct HEAD)" >> "$GITHUB_OUTPUT"
+          echo "created=$(git show -s --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
+      - name: Determine deployment tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ steps.source.outputs.image }}
+          flavor: latest=false
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
             type=ref,event=tag
-            type=raw,value=tagged,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v5
+            type=raw,value=tagged,enable=${{ github.ref_type == 'tag' }}
+          labels: org.opencontainers.image.created=${{ steps.source.outputs.created }}
+      - name: Build and stage image by digest
+        id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.source.outputs.epoch }}
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64
+          pull: true
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            VCS_REF=${{ github.sha }}
-            VCS_TAG=${{ github.ref_name }}
-
-      # Sign the resulting Docker image digest except on PRs.
-      # This will only write to the public Rekor transparency log when the Docker
-      # repository is public to avoid leaking data.  If you would like to publish
-      # transparency data even for private images, pass --force to cosign below.
-      # https://github.com/sigstore/cosign
-      - name: Sign the published Docker image
-        if: ${{ github.event_name != 'pull_request' }}
+          # Keep the digest stable when a scheduled rebuild produces the same image.
+          provenance: false
+          outputs: type=image,name=${{ steps.source.outputs.image }},push=true,push-by-digest=true,name-canonical=true,rewrite-timestamp=true
+          cache-from: type=gha,scope=beagen
+          cache-to: type=gha,scope=beagen,mode=max
+      - name: Pull staged image
         env:
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+          IMAGE: ${{ steps.source.outputs.image }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        shell: bash
+        run: docker pull "${IMAGE}@${DIGEST}"
+      - name: Test and scan the staged image
+        uses: ./.github/actions/check-container
+        with:
+          image: ${{ steps.source.outputs.image }}@${{ steps.image.outputs.digest }}
+          block-on-fixable: 'true'
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - name: Sign the digest and update deployment tags
+        env:
+          IMAGE: ${{ steps.source.outputs.image }}
+          DIGEST: ${{ steps.image.outputs.digest }}
           TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-        # This step uses the identity token to provision an ephemeral certificate
-        # against the sigstore community Fulcio instance.
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == 'refs/heads/master' ]]; then
+            current_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')"
+            if [[ "$current_head" != "$GITHUB_SHA" ]]; then
+              echo "A newer commit is on master. Skipping deployment of this build."
+              exit 0
+            fi
+          fi
+
+          promotion=()
+          while IFS= read -r tag; do
+            if [[ -n "$tag" ]]; then
+              if ! current="$(docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$tag" 2>&1)"; then
+                if [[ "${current,,}" == *"${tag,,}: not found"* || "${current,,}" == *'manifest unknown'* ]]; then
+                  current=''
+                else
+                  printf '%s\n' "$current" >&2
+                  exit 1
+                fi
+              fi
+              if [[ "$GITHUB_REF_TYPE" == 'tag' && "$tag" != "$IMAGE:tagged" && -n "$current" ]]; then
+                echo "Release image $tag is already published."
+                exit 0
+              fi
+              if [[ "$current" != "$DIGEST" ]]; then
+                promotion+=(--tag "$tag")
+              fi
+            fi
+          done <<< "$TAGS"
+
+          if (( ${#promotion[@]} == 0 )); then
+            echo "Deployment tags already reference this digest."
+            exit 0
+          fi
+
+          cosign sign --yes "${IMAGE}@${DIGEST}"
+          docker buildx imagetools create --prefer-index=false "${promotion[@]}" "${IMAGE}@${DIGEST}"
+          printf 'Promoted image digest: %s@%s\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"

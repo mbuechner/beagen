@@ -1,0 +1,49 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "cron"
+      cronjob: "13 6 * * *"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 1
+    # Limit routine updates without excluding a security fix that needs a new major.
+    allow:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      maven-minor-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # https://github.com/h2database/h2database/issues/4446
+      - dependency-name: "com.h2database:h2"
+        versions: ["2.5.250", "2.5.252"]
+
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/check-container"
+    schedule:
+      interval: "cron"
+      cronjob: "23 6 * * *"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        applies-to: "version-updates"
+        patterns: ["*"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "cron"
+      cronjob: "33 6 * * *"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "eclipse-temurin"
+        versions: [">= 26"]
+      # Keep the Maven 3 / Java 25 tag. Builds pull its updated digest.
+      - dependency-name: "maven"

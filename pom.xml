@@ -37,6 +37,8 @@
     </scm>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Normalize archive timestamps independently of when Maven runs. -->
+        <project.build.outputTimestamp>1980-01-01T00:00:02Z</project.build.outputTimestamp>
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <hibernate.version>7.4.16.Final</hibernate.version>
@@ -216,6 +218,29 @@
                             <finalName>beagen</finalName>
                             <appendAssemblyId>false</appendAssemblyId>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>2.9.3</version>
+                <configuration>
+                    <projectType>application</projectType>
+                    <outputFormat>json</outputFormat>
+                    <outputName>beagen-sbom</outputName>
+                    <includeBomSerialNumber>false</includeBomSerialNumber>
+                    <includeProvidedScope>false</includeProvidedScope>
+                    <includeSystemScope>false</includeSystemScope>
+                    <includeTestScope>false</includeTestScope>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-sbom</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>makeBom</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
