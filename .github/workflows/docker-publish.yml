@@ -1,23 +1,25 @@
 name: Docker
 
 on:
-  push:
-    tags: ['v*']
   schedule:
     - cron: '17 8 * * *'
       timezone: Europe/Berlin
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Check only this release tag. Leave empty to refresh the maintained release and its aliases.
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
-concurrency:
-  group: docker-${{ github.ref_type == 'tag' && 'release-tags' || github.ref }}
+concurrency: docker-publish
 
 jobs:
   publish:
     name: Publish checked image to GHCR
-    if: github.ref == 'refs/heads/master' || (github.event_name == 'push' && github.ref_type == 'tag')
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -27,13 +29,50 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Select published release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUESTED_RELEASE: ${{ inputs.release_tag }}
+          MAINTAINED_RELEASE: ${{ vars.CONTAINER_RELEASE_TAG }}
+        shell: bash
+        run: |
+          tag_pattern='^v[0-9][0-9A-Za-z_.-]{0,126}$'
+          requested="${REQUESTED_RELEASE:-$MAINTAINED_RELEASE}"
+          endpoint="repos/$GITHUB_REPOSITORY/releases/latest"
+          if [[ -n "$requested" ]]; then
+            if [[ ! "$requested" =~ $tag_pattern ]]; then
+              echo '::error::Use a release tag such as v1.9.0.'
+              exit 1
+            fi
+            endpoint="repos/$GITHUB_REPOSITORY/releases/tags/$requested"
+          fi
+
+          tag="$(gh api "$endpoint" --jq 'select(.published_at and (.draft | not) and (.prerelease | not)) | .tag_name')"
+          if [[ ! "$tag" =~ $tag_pattern ]]; then
+            echo '::error::Choose a published stable release with a v-prefixed version tag.'
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+          path: release-source
+          persist-credentials: false
       - name: Set image name and reproducible build timestamps
         id: source
         shell: bash
         run: |
-          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-          echo "epoch=$(git show -s --format=%ct HEAD)" >> "$GITHUB_OUTPUT"
-          echo "created=$(git show -s --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+          epoch="$(git -C release-source show -s --format=%ct HEAD)"
+          created="$(git -C release-source show -s --format=%cI HEAD)"
+          revision="$(git -C release-source rev-parse HEAD)"
+          {
+            echo "image=ghcr.io/${GITHUB_REPOSITORY,,}"
+            echo "epoch=$epoch"
+            echo "created=$created"
+            echo "revision=$revision"
+          } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Log in to GHCR
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -41,6 +80,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compare release and base image digests
+        id: bases
+        env:
+          IMAGE: ${{ steps.source.outputs.image }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_REVISION: ${{ steps.source.outputs.revision }}
+        run: python3 .github/scripts/container-build-inputs.py
       - name: Determine deployment tags and labels
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -48,17 +94,24 @@ jobs:
           images: ${{ steps.source.outputs.image }}
           flavor: latest=false
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
-            type=ref,event=tag
-            type=raw,value=tagged,enable=${{ github.ref_type == 'tag' }}
-          labels: org.opencontainers.image.created=${{ steps.source.outputs.created }}
+            type=raw,value=${{ steps.release.outputs.tag }},priority=1000
+            type=raw,value=latest,enable=${{ !inputs.release_tag }}
+            type=raw,value=tagged,enable=${{ !inputs.release_tag }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.source.outputs.created }}
+            org.opencontainers.image.revision=${{ steps.source.outputs.revision }}
+            org.opencontainers.image.base.name=${{ steps.bases.outputs.base_name }}
+            org.opencontainers.image.base.digest=${{ steps.bases.outputs.base_digest }}
+            de.ddb.labs.beagen.build-inputs=${{ steps.bases.outputs.fingerprint }}
       - name: Build and stage image by digest
         id: image
+        if: steps.bases.outputs.reusable_digest == ''
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         env:
           SOURCE_DATE_EPOCH: ${{ steps.source.outputs.epoch }}
         with:
-          context: .
+          context: release-source
+          build-contexts: ${{ steps.bases.outputs.contexts }}
           platforms: linux/amd64
           pull: true
           labels: ${{ steps.meta.outputs.labels }}
@@ -67,16 +120,16 @@ jobs:
           outputs: type=image,name=${{ steps.source.outputs.image }},push=true,push-by-digest=true,name-canonical=true,rewrite-timestamp=true
           cache-from: type=gha,scope=beagen
           cache-to: type=gha,scope=beagen,mode=max
-      - name: Pull staged image
+      - name: Pull release image by digest
         env:
           IMAGE: ${{ steps.source.outputs.image }}
-          DIGEST: ${{ steps.image.outputs.digest }}
+          DIGEST: ${{ steps.image.outputs.digest || steps.bases.outputs.reusable_digest }}
         shell: bash
         run: docker pull "${IMAGE}@${DIGEST}"
-      - name: Test and scan the staged image
+      - name: Test and scan the release image
         uses: ./.github/actions/check-container
         with:
-          image: ${{ steps.source.outputs.image }}@${{ steps.image.outputs.digest }}
+          image: ${{ steps.source.outputs.image }}@${{ steps.image.outputs.digest || steps.bases.outputs.reusable_digest }}
           container-port: '8080'
           container-user: '10001:0'
           container-env: |
@@ -88,17 +141,22 @@ jobs:
       - name: Sign the digest and update deployment tags
         env:
           IMAGE: ${{ steps.source.outputs.image }}
-          DIGEST: ${{ steps.image.outputs.digest }}
+          DIGEST: ${{ steps.image.outputs.digest || steps.bases.outputs.reusable_digest }}
           TAGS: ${{ steps.meta.outputs.tags }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_REVISION: ${{ steps.source.outputs.revision }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == 'refs/heads/master' ]]; then
-            current_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')"
-            if [[ "$current_head" != "$GITHUB_SHA" ]]; then
-              echo "A newer commit is on master. Skipping deployment of this build."
-              exit 0
-            fi
+          current_head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')"
+          if [[ "$current_head" != "$GITHUB_SHA" ]]; then
+            echo "A newer commit is on master. Skipping deployment of this build."
+            exit 0
+          fi
+          current_source="$(gh api "repos/$GITHUB_REPOSITORY/commits/refs%2Ftags%2F$RELEASE_TAG" --jq '.sha')"
+          if [[ "$current_source" != "$RELEASE_REVISION" ]]; then
+            echo '::error::The Git tag changed during the build.'
+            exit 1
           fi
 
           promotion=()
@@ -111,10 +169,6 @@ jobs:
                   printf '%s\n' "$current" >&2
                   exit 1
                 fi
-              fi
-              if [[ "$GITHUB_REF_TYPE" == 'tag' && "$tag" != "$IMAGE:tagged" && -n "$current" ]]; then
-                echo "Release image $tag is already published."
-                exit 0
               fi
               if [[ "$current" != "$DIGEST" ]]; then
                 promotion+=(--tag "$tag")

@@ -19,15 +19,13 @@ mvn clean verify && java -jar target/beagen.jar
 
 See [defaults](src/main/resources/beagen.cfg) for `beagen.port`, `beagen.cron` and `beagen.database`. Behind a reverse proxy, set `beagen.baseurl` to the public URL and `beagen.pathprefix` to the forwarded prefix. Set all five via environment variables.
 
-## From PR to OpenShift
+## From release to OpenShift
 
-OpenShift tracks the same `latest` image shown above. The daily build batches merged code and dependency changes with any base-image updates.
+1. PRs run `mvn verify`. Dependabot groups Maven minor and patch updates. Publish a GitHub Release from a tag like `v1.9.0` to ship a new application or dependency version.
+2. At **08:17 Europe/Berlin**, CI checks the release and its Linux/amd64 base image digests, including `eclipse-temurin:25-jre-noble`. It rebuilds when the inputs change and scans the image and its Maven SBOM each day. The [container check](.github/actions/check-container/action.yml) also probes HTTP as non-root.
+3. GHCR updates the version tag and its `latest` and `tagged` aliases when the signed digest changes. Point OpenShift's periodic import at `ghcr.io/mbuechner/beagen:v1.9.0` to keep that application version while picking up Java and OS updates.
 
-1. PRs run `mvn verify`. Dependabot checks daily and bundles Maven minor and patch updates into one routine PR. Pushes and bot merges on `master` refresh the Maven dependency graph.
-2. At **08:17 Europe/Berlin**, CI pulls fresh Java 25 base images and builds `master`. The [container check](.github/actions/check-container/action.yml) probes HTTP as non-root and scans the image and its Maven SBOM before Cosign signs it. The workflow supplies the port, startup settings and optional SBOM path.
-3. GHCR moves `latest` when the signed digest changes. OpenShift rolls it out on the next poll.
-
-Push a Git tag like `v1.9.1` for an immutable release image. For an urgent `latest` build, use **Actions → Docker → Run workflow** on `master`.
+CI maintains the latest stable GitHub Release by default. Set the repository variable `CONTAINER_RELEASE_TAG` to keep refreshing a specific published release after newer releases appear. For an urgent update check, run **Actions → Docker → Run workflow** on `master`. An explicit `release_tag` updates only that image tag.
 
 ### Dependabot settings
 
