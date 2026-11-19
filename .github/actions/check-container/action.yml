@@ -21,12 +21,23 @@ runs:
         container="$(docker run --detach --user 10001:0 --publish 127.0.0.1::8080 \
           --env 'beagen.database=mem:ci;DB_CLOSE_DELAY=-1' \
           --env 'beagen.cron=0 0 0 1 1 ? 2099' "$IMAGE")"
-        trap 'docker logs "$container"; docker rm -f "$container" >/dev/null' EXIT
+        cleanup() {
+          if [[ $? -ne 0 ]]; then
+            docker inspect --format '{{json .State}}' "$container" >&2 || true
+            docker logs "$container" >&2 || true
+          fi
+          docker rm -f "$container" >/dev/null
+        }
+        trap cleanup EXIT
 
         url="http://$(docker port "$container" 8080/tcp)"
-        curl --fail --silent --show-error --retry 25 --retry-connrefused --retry-delay 1 --max-time 5 \
-          --header 'Accept: application/json' "$url/list/latest" | jq -e '. == []'
-        curl --fail --silent --show-error --header 'Accept: text/html' "$url/list/latest" \
+        json="$RUNNER_TEMP/beagen-smoke.json"
+        # Docker may reset the connection before Java starts listening. Retry into a file so partial responses are discarded.
+        curl --fail --silent --show-error --retry 25 --retry-all-errors --retry-delay 1 \
+          --retry-max-time 30 --max-time 5 --header 'Accept: application/json' \
+          --output "$json" "$url/list/latest"
+        jq -e '. == []' "$json"
+        curl --fail --silent --show-error --max-time 5 --header 'Accept: text/html' "$url/list/latest" \
           --output "$RUNNER_TEMP/beagen-smoke.html"
         grep -qi '<!DOCTYPE html>' "$RUNNER_TEMP/beagen-smoke.html"
 
