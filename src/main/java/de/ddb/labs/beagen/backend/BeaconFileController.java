@@ -39,8 +39,24 @@ public class BeaconFileController {
     }
 
     public static void saveBeaconFile(BeaconFile beaconFile) {
+        if (beaconFile.getCount() <= 0) {
+            throw new IllegalArgumentException("A BEACON file must contain at least one entry.");
+        }
         EntityManagerUtil.getInstance().runInTransaction(em -> em.persist(beaconFile));
         listRevision.incrementAndGet();
+    }
+
+    public static void deleteEmptyBeaconFiles() {
+        try {
+            final int deleted = EntityManagerUtil.getInstance().callInTransaction(em ->
+                    em.createQuery("DELETE FROM BeaconFile f WHERE f.count = 0").executeUpdate());
+            if (deleted > 0) {
+                listRevision.incrementAndGet();
+            }
+            log.info("Startup cleanup removed {} empty BEACON files.", deleted);
+        } catch (RuntimeException e) {
+            log.warn("Could not complete the startup cleanup of empty BEACON files.", e);
+        }
     }
 
     public static long getListRevision() {

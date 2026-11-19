@@ -124,6 +124,9 @@ public class Main {
                 });
             });
             config.events.serverStarting(() -> EntityManagerUtil.getInstance());
+            config.events.serverStarted(() -> Thread.ofVirtual()
+                    .name("beagen-empty-file-cleanup")
+                    .start(BeaconFileController::deleteEmptyBeaconFiles));
             config.events.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
             registerRoutes(config.routes, pathPrefix, responseCache);
         });

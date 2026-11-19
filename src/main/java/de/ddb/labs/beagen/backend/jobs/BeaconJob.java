@@ -120,12 +120,19 @@ public class BeaconJob implements Job {
             }
 
             for (String line; (line = reader.readLine()) != null;) {
-                bw.append(line);
-                bw.newLine();
-                count++;
+                if (!line.isBlank()) {
+                    bw.append(line);
+                    bw.newLine();
+                    count++;
+                }
             }
         } catch (IOException ex) {
             log.error("Could not download newspaper data. {}", ex.getMessage(), ex);
+            return;
+        }
+
+        if (count == 0) {
+            log.info("No newspaper entries returned. Keeping any existing BEACON file.");
             return;
         }
 
