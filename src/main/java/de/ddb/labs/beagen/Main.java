@@ -33,7 +33,6 @@ import io.javalin.http.Header;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.NotFoundResponse;
 import io.javalin.json.JavalinJackson3;
-import io.javalin.rendering.template.JavalinMustache;
 import java.util.List;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
@@ -93,6 +92,8 @@ public class Main {
         System.out.println(BEAGEN_PORT + "=" + Configuration.get().getValue(BEAGEN_PORT));
         System.out.println(BEAGEN_CRON + "=" + Configuration.get().getValue(BEAGEN_CRON));
 
+        final ResponseCache responseCache = new ResponseCache();
+
         // start update job
         final JobDetail job = JobBuilder.newJob(BeaconJob.class)
                 .withIdentity("cronjob", "crongroup")
@@ -114,7 +115,6 @@ public class Main {
         Javalin.start(config -> {
             config.jetty.port = port;
             config.jsonMapper(new JavalinJackson3().updateMapper(builder -> builder.configureForJackson2()));
-            config.fileRenderer(new JavalinMustache());
             config.http.generateEtags = true;
             // Enable Brotli and GZIP compression with moderate levels
             config.http.compressionStrategy = new CompressionStrategy(new Brotli(4), new Gzip(6));
@@ -125,11 +125,11 @@ public class Main {
             });
             config.events.serverStarting(() -> EntityManagerUtil.getInstance());
             config.events.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
-            registerRoutes(config.routes, pathPrefix);
+            registerRoutes(config.routes, pathPrefix, responseCache);
         });
     }
 
-    private static void registerRoutes(RoutesConfig routes, String pathPrefix) {
+    private static void registerRoutes(RoutesConfig routes, String pathPrefix, ResponseCache responseCache) {
         // set UTF-8 as default charset
         routes.before(ctx -> ctx.res().setCharacterEncoding("UTF-8"));
 
@@ -171,14 +171,15 @@ public class Main {
             ctx.redirect(pathPrefix + "/list/latest?type=organisation&sector=all", HttpStatus.MOVED_PERMANENTLY);
         });
 
-        routes.get(pathPrefix + "/list", ctx -> deliver(ctx, false));
-        routes.get(pathPrefix + "/list/latest", ctx -> deliver(ctx, true));
+        routes.get(pathPrefix + "/list", ctx -> deliver(ctx, false, responseCache));
+        routes.get(pathPrefix + "/list/latest", ctx -> deliver(ctx, true, responseCache));
     }
 
-    private static void deliver(Context ctx, boolean latest) {
+    private static void deliver(Context ctx, boolean latest, ResponseCache responseCache) {
         ctx.addHeader(Header.VARY, Header.ACCEPT);
+        ctx.addHeader(Header.VARY, Header.ACCEPT_ENCODING);
         if (deliverHtml(ctx.header(Header.ACCEPT))) {
-            ctx.render("/base.mustache");
+            responseCache.serveHtml(ctx);
             return;
         }
 
@@ -204,7 +205,7 @@ public class Main {
             throw new BadRequestResponse("Keine gültige Kultursparte");
         }
 
-        ctx.json(BeaconFileController.getBeaconFiles(type, sector, latest));
+        responseCache.serveList(ctx, type, sector, latest);
     }
 
     private static boolean deliverHtml(String accept) {

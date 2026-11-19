@@ -39,7 +39,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <javalin.version>7.2.4</javalin.version>
         <hibernate.version>7.4.16.Final</hibernate.version>
         <lombok.version>1.18.48</lombok.version>
         <spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
@@ -59,18 +58,13 @@
         <dependency>
             <groupId>io.javalin</groupId>
             <artifactId>javalin</artifactId>
-            <version>${javalin.version}</version>
+            <version>7.2.4</version>
         </dependency>
         <dependency>
             <groupId>com.aayushatharva.brotli4j</groupId>
             <artifactId>brotli4j</artifactId>
             <version>1.24.0</version>
             <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.javalin</groupId>
-            <artifactId>javalin-rendering-mustache</artifactId>
-            <version>${javalin.version}</version>
         </dependency>
         <dependency>
             <groupId>tools.jackson.core</groupId>

@@ -158,7 +158,7 @@
           } else {
             $("#selectorAll").prop("checked", false);
           }
-          $.getJSON(url + (url.indexOf("?") === -1 ? "?" : "&") + "rnd=" + Math.random(), function (data) {
+          $.getJSON(url, function (data) {
             $("#beaconTableRow").removeClass("d-none");
             $("#beaconTable").bootstrapTable({
               data: data,

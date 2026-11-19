@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import jakarta.persistence.TypedQuery;
 
 /**
@@ -32,11 +33,18 @@ import jakarta.persistence.TypedQuery;
 @Slf4j
 public class BeaconFileController {
 
+    private static final AtomicLong listRevision = new AtomicLong();
+
     private BeaconFileController() {
     }
 
     public static void saveBeaconFile(BeaconFile beaconFile) {
         EntityManagerUtil.getInstance().runInTransaction(em -> em.persist(beaconFile));
+        listRevision.incrementAndGet();
+    }
+
+    public static long getListRevision() {
+        return listRevision.get();
     }
 
     /**
@@ -111,33 +119,35 @@ public class BeaconFileController {
      * @return List of Beacon file objects
      */
     public static List<BeaconFile> getBeaconFiles(TYPE type, SECTOR sector, boolean onlyLatest) {
-
-        String qs = "SELECT f FROM BeaconFile AS f WHERE ";
-
-        if (type != null) {
-            qs += "f.type = :type AND ";
-        }
-
-        final String query = qs + "f.sector = :mysector ORDER BY f.created DESC, f.type, f.sector";
-
         try {
-            return EntityManagerUtil.getInstance().callInTransaction(em -> {
-                final TypedQuery<BeaconFile> q2 = em.createQuery(query, BeaconFile.class);
-                q2.setParameter("mysector", sector);
-                if (type != null) {
-                    q2.setParameter("type", type);
-                }
-
-                if (onlyLatest) {
-                    q2.setMaxResults(1);
-                }
-                return q2.getResultList();
-            });
+            return selectBeaconFiles("SELECT f", BeaconFile.class, type, sector, onlyLatest);
         } catch (Exception e) {
             log.error("Could not get Beacon files. {}", e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
 
+    public static List<BeaconFileSummary> getBeaconFileSummaries(TYPE type, SECTOR sector, boolean onlyLatest) {
+        final String projection = "SELECT NEW de.ddb.labs.beagen.backend.BeaconFileSummary(f.type, f.sector, f.created, f.count, f.id)";
+        return selectBeaconFiles(projection, BeaconFileSummary.class, type, sector, onlyLatest);
+    }
+
+    private static <T> List<T> selectBeaconFiles(String projection, Class<T> resultType, TYPE type, SECTOR sector, boolean onlyLatest) {
+        final String query = projection + " FROM BeaconFile AS f WHERE "
+                + (type == null ? "" : "f.type = :type AND ")
+                + "f.sector = :sector ORDER BY f.created DESC, f.type, f.sector";
+
+        return EntityManagerUtil.getInstance().callInTransaction(em -> {
+            final TypedQuery<T> selection = em.createQuery(query, resultType);
+            selection.setParameter("sector", sector);
+            if (type != null) {
+                selection.setParameter("type", type);
+            }
+            if (onlyLatest) {
+                selection.setMaxResults(1);
+            }
+            return selection.getResultList();
+        });
     }
 
     /**
