@@ -15,11 +15,10 @@
  */
 package de.ddb.labs.beagen.backend.helper;
 
-import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
 
 /**
@@ -30,46 +29,37 @@ public class Configuration {
 
     private static final String PROPERTY_FILE = "/beagen.cfg";
     private static final String PROPERTY_FILE_DEV = "/beagen.dev.cfg";
-    private static final Properties PROPERTIES = new Properties();
+    private static Configuration instance;
+    private final Properties properties = new Properties();
 
-    private Configuration() {
-    }
-
-    private static class ConfigurationHelper {
-        private static final Configuration INSTANCE = new Configuration();
-    }
-
-    public static Configuration get() throws InvalidPropertiesFormatException, IOException {
-
-        if (PROPERTIES.isEmpty()) {
-            // first try to load development properties
-            try (final BufferedReader cfg = new BufferedReader(new InputStreamReader(Configuration.class.getResourceAsStream(PROPERTY_FILE_DEV), StandardCharsets.UTF_8))) {
-                PROPERTIES.load(cfg);
-                System.out.println("Configuration loaded from " + PROPERTY_FILE_DEV);
-            } catch (Exception e) {
-                try (final BufferedReader cfg = new BufferedReader(new InputStreamReader(Configuration.class.getResourceAsStream(PROPERTY_FILE), StandardCharsets.UTF_8))) {
-                    PROPERTIES.load(cfg);
-                    System.out.println("Configuration loaded from " + PROPERTY_FILE);
-                } catch (Exception ex) {
-                    System.err.println("Could NOT load configuration from "
-                            + PROPERTY_FILE_DEV + " (" + e.getMessage() + ") and "
-                            + PROPERTY_FILE + " (" + ex.getMessage() + ").");
-                }
-            }
+    private Configuration() throws IOException {
+        final String propertyFile = Boolean.getBoolean("beagen.dev") ? PROPERTY_FILE_DEV : PROPERTY_FILE;
+        final InputStream resource = Configuration.class.getResourceAsStream(propertyFile);
+        if (resource == null) {
+            throw new IOException("Configuration resource not found: " + propertyFile);
         }
+        try (final InputStreamReader reader = new InputStreamReader(resource, StandardCharsets.UTF_8)) {
+            properties.load(reader);
+        }
+        System.out.println("Configuration loaded from " + propertyFile);
+    }
 
-        return ConfigurationHelper.INSTANCE;
+    public static synchronized Configuration get() throws IOException {
+        if (instance == null) {
+            instance = new Configuration();
+        }
+        return instance;
     }
 
     public String[] getValueAsArray(String key, String split) {
-        return PROPERTIES.getProperty(key).split(split);
+        return properties.getProperty(key).split(split);
     }
 
     public String getValue(String key) {
-        return PROPERTIES.getProperty(key);
+        return properties.getProperty(key);
     }
 
     public void setValue(String key, String value) {
-        PROPERTIES.setProperty(key, value);
+        properties.setProperty(key, value);
     }
 }

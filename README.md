@@ -11,66 +11,69 @@ A Beacon file generator for [Deutsche Digitale Bibliothek](https://www.deutsche-
 ![Screenshot of Beagen](beagen.png "Beagen")
 
 # Docker
-[Beagen is available as Docker container at GitHub](https://github.com/mbuechner/beagen/pkgs/container/beagen%2Fbeagen). To run the container execute:
+
+Run the image from GitHub Container Registry.
+
+```sh
+docker run -d -p 8080:8080 \
+    --volume beagen:/home/beagen/files \
+    ghcr.io/mbuechner/beagen:latest
 ```
-docker run -d -p 8080:8080 -P \
-    --env "beagen.baseurl=http://localhost/" \
-    --env "beagen.cron=0 0 12 * * ?" \
-    --env "beagen.database.dir=files/database/" \
-ghcr.io/mbuechner/beagen/beagen:latest
-```
-*Note:* `beagen.database.dir` should be a directory inside a Docker volume. If not all data will be lost on restart.
+
+Open http://localhost:8080/. Reuse the `beagen` volume when replacing the container to retain the H2 database.
 
 ## Environment variables
-| Variable            | Description                                                                                                                                                                       |
-|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| beagen.baseurl      | Base url of Beagen application. Mainly used to build URLs in the Beacon file headers.                                                                                             |
-| beagen.cron         | How often should the Job run and check for updates at DDB ([Quartz documentation](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html)). |
-| beagen.database.dir | Directory for the database files ([Apache Derby](https://db.apache.org/derby/))                                                                                                   |
+
+| Variable | Description |
+|----------|-------------|
+| `beagen.baseurl` | Public URL used to construct BEACON links, without a trailing slash. Defaults to `http://localhost:8080`. |
+| `beagen.pathprefix` | Application path prefix, such as `/beagen` when the proxy forwards that prefix. Defaults to an empty prefix. |
+| `beagen.port` | HTTP listening port. Defaults to `8080`. |
+| `beagen.cron` | [Quartz cron expression](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html) for checking for DDB updates. Defaults to daily at noon. |
+| `beagen.database` | H2 JDBC URL suffix (the part after `jdbc:h2:`). The default file is stored under `./files/database/`. |
 
 ## Container build
-If you like to build the Docker container by yourself, please follow these steps. (Not necessary if you use the [pre-build container at GitHub](https://github.com/mbuechner/beagen/pkgs/container/beagen%2Fbeagen).)
 
-1. Checkout GitHub repository: `git clone https://github.com/mbuechner/beagen`
-2. Go into folder: `cd beagen`
-3. Run `docker build -t beagen .`
-4. Start container:
-    ```
-    docker run -d -p 8080:8080 -P \
-        --env "beagen.baseurl=http://localhost/" \
-        --env "beagen.cron=0 0 12 * * ?" \
-        --env "beagen.database.dir=files/database/" \
+To build and run the image locally, run these commands.
+
+```sh
+git clone https://github.com/mbuechner/beagen
+cd beagen
+docker build -t beagen .
+docker run -d -p 8080:8080 \
+    --volume beagen:/home/beagen/files \
     beagen
-    ```
-5. Open browser: http://localhost:8080/
+```
 
 ## Docker stack
-If you're using [Docker Stack](https://docs.docker.com/engine/reference/commandline/stack/) to deploy application, this could be a possible configuration file in YAML.
-```
-version: '2'
+
+Use the following configuration for a single-node [Docker Swarm](https://docs.docker.com/engine/swarm/stack-deploy/).
+
+```yaml
+version: "3.8"
 services:
   beagen:
-    image: ghcr.io/mbuechner/beagen/beagen:latest
+    image: ghcr.io/mbuechner/beagen:latest
     volumes:
       - beagen:/home/beagen/files
-    environment:
-      - "beagen.baseurl=https://example.com/beagen/"
-      - "beagen.cron=0 0 12 * * ?"
-      - "beagen.database.dir=/home/beagen/files/database/"
     ports:
-      - "8080"
-    restart: always
+      - "8080:8080"
 volumes:
   beagen:
-```	  
+```
 
 # Maven
-Beagen uses Maven and includes a [Jetty web server](https://jetty.org/) through [Javalin](https://javalin.io/). To build locally, install Java 25 LTS (JDK) and Maven, then run the following command from the directory containing `pom.xml`:
-```
+
+Beagen uses Java 25 LTS (JDK) and Maven 3.9 or later. To build the executable JAR, run this command from the directory containing `pom.xml`.
+
+```sh
 mvn clean package
 ```
-This will build a fat-jar with all dependencies. To run the webserver type:
-```
+
+Start the web server with this command and open http://localhost:8080/.
+
+```sh
 java -jar target/beagen.jar
 ```
-It'll run locally under: http://localhost:8080/
+
+To use the development settings, including the once-per-minute update schedule, start with `java -Dbeagen.dev=true -jar target/beagen.jar`.
