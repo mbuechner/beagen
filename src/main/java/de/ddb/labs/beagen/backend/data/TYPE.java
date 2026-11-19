@@ -15,10 +15,9 @@
  */
 package de.ddb.labs.beagen.backend.data;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
 /**
  *
@@ -42,10 +41,10 @@ public enum TYPE {
     /**
      * Json Serializer for output over API
      */
-    public static class TypeSerializer extends JsonSerializer<TYPE> {
+    public static class TypeSerializer extends ValueSerializer<TYPE> {
 
         @Override
-        public void serialize(TYPE t, JsonGenerator jg, SerializerProvider sp) throws IOException {
+        public void serialize(TYPE t, JsonGenerator jg, SerializationContext context) {
 
             final String name = t.getName();
 
@@ -54,24 +53,24 @@ public enum TYPE {
                 jg.writeStartObject();
 
                 if (t == TYPE.PERSON) {
-                    jg.writeFieldName("@id");
+                    jg.writeName("@id");
                     jg.writeString("http://d-nb.info/standards/elementset/gnd#Person");
                 }
 
                 if (t == TYPE.ORGANISATION) {
-                    jg.writeFieldName("@id");
+                    jg.writeName("@id");
                     jg.writeString("http://d-nb.info/standards/elementset/gnd#CorporateBody");
                 }
 
                 if (t == TYPE.NEWSPAPER) {
-                    jg.writeFieldName("@id");
+                    jg.writeName("@id");
                     jg.writeString("https://ld.zdb-services.de/");
                 }
 
-                jg.writeFieldName("abbr");
+                jg.writeName("abbr");
                 jg.writeString(name);
 
-                jg.writeFieldName("name");
+                jg.writeName("name");
                 jg.writeString(name);
             }
 

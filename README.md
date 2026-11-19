@@ -65,7 +65,7 @@ volumes:
 ```	  
 
 # Maven
-It's a maven project comming with build-in [Jetty web server](http://www.eclipse.org/jetty/) ([Javalin](https://javalin.io/)). To build this project locally without using Docker, run inside the direcory with `pom.xml`:
+Beagen uses Maven and includes a [Jetty web server](https://jetty.org/) through [Javalin](https://javalin.io/). To build locally, install Java 25 LTS (JDK) and Maven, then run the following command from the directory containing `pom.xml`:
 ```
 mvn clean package
 ```

@@ -20,10 +20,10 @@ import de.ddb.labs.beagen.backend.data.TYPE;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonSerialize;
 import de.ddb.labs.beagen.backend.data.SECTOR.SectorSerializer;
 import de.ddb.labs.beagen.backend.data.TYPE.TypeSerializer;
 import de.ddb.labs.beagen.backend.helper.Configuration;
@@ -36,6 +36,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Serializable;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
@@ -44,20 +45,21 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
-import javax.persistence.Basic;
-import javax.persistence.FetchType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Lob;
-import javax.persistence.Index;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
+import jakarta.persistence.Basic;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Index;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Beacon file representation
@@ -81,13 +83,16 @@ public class BeaconFile implements Serializable {
     @Id
     @Basic(optional = false)
     //@NotNull
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    // Keep allocating IDs from the Hibernate 5 sequence in existing databases.
+    @SequenceGenerator(name = "beacon_file_id", sequenceName = "hibernate_sequence", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "beacon_file_id")
     @Column(name = "id", updatable = false, nullable = false)
     @JsonSerialize(using = IdSerializer.class)
     @JsonProperty("@id")
     private Long id;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Basic(optional = false)
     //@Size(min = 1, max = 32)
     @Column(name = "type")
@@ -95,6 +100,7 @@ public class BeaconFile implements Serializable {
     private TYPE type;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Basic(optional = false)
     //@Size(min = 1, max = 32)
     @Column(name = "sector")
@@ -103,7 +109,7 @@ public class BeaconFile implements Serializable {
 
     @Basic(optional = false)
     @Column(name = "created")
-    @Temporal(TemporalType.TIMESTAMP)
+    @JdbcTypeCode(SqlTypes.TIMESTAMP)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private Date created;
 
@@ -296,11 +302,15 @@ public class BeaconFile implements Serializable {
         this.type = type;
     }
 
-    public static class IdSerializer extends JsonSerializer<Long> {
+    public static class IdSerializer extends ValueSerializer<Long> {
 
         @Override
-        public void serialize(Long t, JsonGenerator jg, SerializerProvider sp) throws IOException {
-            jg.writeString(Configuration.get().getValue(BEAGEN_BASEURL) + API_ITEM_METHODE + "/" + Long.toString(t));
+        public void serialize(Long t, JsonGenerator jg, SerializationContext context) {
+            try {
+                jg.writeString(Configuration.get().getValue(BEAGEN_BASEURL) + API_ITEM_METHODE + "/" + Long.toString(t));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
     }
 

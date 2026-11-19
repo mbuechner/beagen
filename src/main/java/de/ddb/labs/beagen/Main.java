@@ -23,10 +23,15 @@ import de.ddb.labs.beagen.backend.jobs.BeaconJob;
 import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
 import io.javalin.Javalin;
+import io.javalin.compression.Brotli;
+import io.javalin.compression.CompressionStrategy;
+import io.javalin.compression.Gzip;
+import io.javalin.config.RoutesConfig;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.NotFoundResponse;
 import io.javalin.http.HttpStatus;
+import io.javalin.json.JavalinJackson3;
 import io.javalin.rendering.template.JavalinMustache;
 import java.util.List;
 import org.quartz.CronScheduleBuilder;
@@ -103,27 +108,31 @@ public class Main {
         quartzScheduler.scheduleJob(job, trigger);
 
         // start javalin server
-        final Javalin app = Javalin.create(config -> {
+        final int port = Integer.parseInt(Configuration.get().getValue(BEAGEN_PORT));
+        final String pathPrefix = Configuration.get().getValue(BEAGEN_PATHPREFIX);
+        Javalin.start(config -> {
+            config.jetty.port = port;
+            config.jsonMapper(new JavalinJackson3().updateMapper(builder -> builder.configureForJackson2()));
             config.fileRenderer(new JavalinMustache());
             config.http.generateEtags = true;
             // Enable Brotli and GZIP compression with moderate levels
-            config.http.brotliAndGzipCompression();
+            config.http.compressionStrategy = new CompressionStrategy(new Brotli(4), new Gzip(6));
             config.bundledPlugins.enableCors(cors -> {
                 cors.addRule(it -> {
                     it.anyHost();
                 });
             });
-        }).events(event -> {
-            // init DB
-            event.serverStarting(() -> EntityManagerUtil.getInstance());
-            // close DB connection
-            event.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
-        }).start(Integer.parseInt(Configuration.get().getValue(BEAGEN_PORT)));
+            config.events.serverStarting(() -> EntityManagerUtil.getInstance());
+            config.events.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
+            registerRoutes(config.routes, pathPrefix);
+        });
+    }
 
+    private static void registerRoutes(RoutesConfig routes, String pathPrefix) {
         // set UTF-8 as default charset
-        app.before(ctx -> ctx.res().setCharacterEncoding("UTF-8"));
+        routes.before(ctx -> ctx.res().setCharacterEncoding("UTF-8"));
 
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/{id}", ctx -> {
+        routes.get(pathPrefix + "/item/{id}", ctx -> {
             final Long id = Long.valueOf(ctx.pathParam("id"));
             final BeaconFile bfile = BeaconFileController.getBeaconFile(id);
             if (bfile == null) {
@@ -132,7 +141,7 @@ public class Main {
             ctx.result(bfile.getBeaconFile());
         });
 
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/item/{type}/{sector}/latest", ctx -> {
+        routes.get(pathPrefix + "/item/{type}/{sector}/latest", ctx -> {
 
             TYPE type;
             try {
@@ -157,14 +166,12 @@ public class Main {
             }
         });
 
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX), ctx -> {
-            ctx.redirect(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list/latest?type=organisation&sector=all", HttpStatus.MOVED_PERMANENTLY);
+        routes.get(pathPrefix, ctx -> {
+            ctx.redirect(pathPrefix + "/list/latest?type=organisation&sector=all", HttpStatus.MOVED_PERMANENTLY);
         });
 
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list", ctx -> deliver(ctx, false));
-
-        // set paths
-        app.get(Configuration.get().getValue(BEAGEN_PATHPREFIX) + "/list/latest", ctx -> deliver(ctx, true));
+        routes.get(pathPrefix + "/list", ctx -> deliver(ctx, false));
+        routes.get(pathPrefix + "/list/latest", ctx -> deliver(ctx, true));
     }
 
     private static void deliver(Context ctx, boolean latest) {

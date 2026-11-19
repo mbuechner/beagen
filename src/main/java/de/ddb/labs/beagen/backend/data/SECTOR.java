@@ -15,10 +15,9 @@
  */
 package de.ddb.labs.beagen.backend.data;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
 /**
  *
@@ -67,10 +66,10 @@ public enum SECTOR {
     /**
      * Json Serializer for output over API
      */
-    public static class SectorSerializer extends JsonSerializer<SECTOR> {
+    public static class SectorSerializer extends ValueSerializer<SECTOR> {
 
         @Override
-        public void serialize(SECTOR t, JsonGenerator jg, SerializerProvider sp) throws IOException {
+        public void serialize(SECTOR t, JsonGenerator jg, SerializationContext context) {
 
             final String uri = t.getUri();
             final String abbr = t.getShortName();
@@ -83,17 +82,17 @@ public enum SECTOR {
                 jg.writeStartObject();
 
                 if (uri != null && !uri.isEmpty()) {
-                    jg.writeFieldName("@id");
+                    jg.writeName("@id");
                     jg.writeString(uri);
                 }
 
                 if (abbr != null && !abbr.isEmpty()) {
-                    jg.writeFieldName("abbr");
+                    jg.writeName("abbr");
                     jg.writeString(abbr);
                 }
 
                 if (name != null && !name.isEmpty()) {
-                    jg.writeFieldName("name");
+                    jg.writeName("name");
                     jg.writeString(name);
                 }
 

@@ -15,8 +15,9 @@
  */
 package de.ddb.labs.beagen.backend.jobs;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import de.ddb.labs.beagen.backend.BeaconFile;
 import de.ddb.labs.beagen.backend.BeaconFileController;
 import de.ddb.labs.beagen.backend.data.SECTOR;
@@ -42,9 +43,9 @@ import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityTransaction;
-import javax.persistence.PersistenceException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.PersistenceException;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +66,7 @@ public class BeaconJob implements Job {
     private static final String URL = "https://api.deutsche-digitale-bibliothek.de/2";
     private static final EnumMap<TYPE, String> SEARCH = new EnumMap<>(TYPE.class);
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonMapper mapper = JsonMapper.builderWithJackson2Defaults().build();
 
     // count of entities per query
     private static final int ENTITYCOUNT = 10000;
@@ -260,7 +261,7 @@ public class BeaconJob implements Job {
                 }
                 byteStreams.get(sector).close();
             }
-        } catch (ParseException | IOException | PersistenceException ex) {
+        } catch (ParseException | IOException | JacksonException | PersistenceException ex) {
             log.error("Error while processing entity data. {}", ex.getMessage());
         }
 
@@ -280,7 +281,7 @@ public class BeaconJob implements Job {
             log.debug("Query: {}", url);
 
             final JsonNode doc = mapper.readTree(is);
-            final String nextCursorMarkLocal = doc.get("nextCursorMark").asText("");
+            final String nextCursorMarkLocal = doc.get("nextCursorMark").asString("");
             if (nextCursorMarkLocal.equals(nextCursorMark)) {
                 nextCursorMark = "";
             } else {
