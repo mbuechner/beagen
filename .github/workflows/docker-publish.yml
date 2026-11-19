@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Check only this release tag. Leave empty to refresh the maintained release and its aliases.
+        description: Check this release tag. Leave empty to select the maintained release.
         type: string
         default: ''
 
@@ -112,10 +112,7 @@ jobs:
         with:
           images: ${{ steps.source.outputs.image }}
           flavor: latest=false
-          tags: |
-            type=raw,value=${{ steps.release.outputs.tag }},priority=1000
-            type=raw,value=latest,enable=${{ !inputs.release_tag }}
-            type=raw,value=tagged,enable=${{ !inputs.release_tag }}
+          tags: type=raw,value=${{ steps.release.outputs.tag }}
           labels: |
             org.opencontainers.image.created=${{ steps.source.outputs.created }}
             org.opencontainers.image.revision=${{ steps.source.outputs.revision }}
@@ -161,9 +158,9 @@ jobs:
         env:
           IMAGE: ${{ steps.source.outputs.image }}
           DIGEST: ${{ steps.image.outputs.digest || steps.bases.outputs.reusable_digest }}
-          TAGS: ${{ steps.meta.outputs.tags }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_REVISION: ${{ steps.source.outputs.revision }}
+          MAINTAINED_RELEASE: ${{ vars.CONTAINER_RELEASE_TAG }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
@@ -178,22 +175,30 @@ jobs:
             exit 1
           fi
 
+          # Resolve the maintained release after the checks in case a newer release was published during the build.
+          maintained_release="$MAINTAINED_RELEASE"
+          if [[ -z "$maintained_release" ]]; then
+            maintained_release="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
+          fi
+          tags=("$IMAGE:$RELEASE_TAG")
+          if [[ "$RELEASE_TAG" == "$maintained_release" ]]; then
+            tags+=("$IMAGE:latest" "$IMAGE:tagged")
+          fi
+
           promotion=()
-          while IFS= read -r tag; do
-            if [[ -n "$tag" ]]; then
-              if ! current="$(docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$tag" 2>&1)"; then
-                if [[ "${current,,}" == *"${tag,,}: not found"* || "${current,,}" == *'manifest unknown'* ]]; then
-                  current=''
-                else
-                  printf '%s\n' "$current" >&2
-                  exit 1
-                fi
-              fi
-              if [[ "$current" != "$DIGEST" ]]; then
-                promotion+=(--tag "$tag")
+          for tag in "${tags[@]}"; do
+            if ! current="$(docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$tag" 2>&1)"; then
+              if [[ "${current,,}" == *"${tag,,}: not found"* || "${current,,}" == *'manifest unknown'* ]]; then
+                current=''
+              else
+                printf '%s\n' "$current" >&2
+                exit 1
               fi
             fi
-          done <<< "$TAGS"
+            if [[ "$current" != "$DIGEST" ]]; then
+              promotion+=(--tag "$tag")
+            fi
+          done
 
           if (( ${#promotion[@]} == 0 )); then
             echo "Deployment tags already reference this digest."

@@ -23,9 +23,9 @@ See [defaults](src/main/resources/beagen.cfg) for `beagen.port`, `beagen.cron` a
 
 1. PRs run `mvn verify`. Dependabot groups Maven minor and patch updates. Publishing a stable GitHub Release queues its versioned container build on `master`. Tag a commit that contains the release trigger.
 2. At **08:17 Europe/Berlin**, CI checks the release and its Linux/amd64 base image digests, including `amazoncorretto:25`. It rebuilds when the inputs change and scans the image and its Maven SBOM each day. The [container check](.github/actions/check-container/action.yml) also probes HTTP as non-root.
-3. GHCR updates the version tag and its `latest` and `tagged` aliases when the signed digest changes. Point OpenShift's periodic import at `ghcr.io/mbuechner/beagen:v1.9.0` to keep that application version while picking up Java and OS updates.
+3. GHCR updates the version tag after verification and signing. For the maintained release, the same run also updates `latest` and `tagged`. Point OpenShift's periodic import at a version tag to keep that application version while picking up Java and OS updates.
 
-CI maintains the latest stable GitHub Release by default. Set the repository variable `CONTAINER_RELEASE_TAG` to keep refreshing a specific published release after newer releases appear. For an urgent update check, run **Actions → Docker → Run workflow** on `master`. An explicit `release_tag` updates only that image tag.
+CI maintains the latest stable GitHub Release by default. Set the repository variable `CONTAINER_RELEASE_TAG` to keep refreshing a specific published release after newer releases appear. For an urgent update check, run **Actions → Docker → Run workflow** on `master`. Use `release_tag` to select a specific published release.
 
 ### Dependabot settings
 
