@@ -1,6 +1,8 @@
 name: Docker
 
 on:
+  release:
+    types: [published]
   schedule:
     - cron: '17 8 * * *'
       timezone: Europe/Berlin
@@ -14,12 +16,29 @@ on:
 permissions:
   contents: read
 
-concurrency: docker-publish
-
 jobs:
+  dispatch-release:
+    name: Queue Docker build for the published release
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-26.04
+    permissions:
+      actions: write
+    steps:
+      - name: Start the publisher on master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          gh workflow run docker-publish.yml --repo "$GITHUB_REPOSITORY" --ref master \
+            --raw-field "release_tag=$RELEASE_TAG"
+
   publish:
     name: Publish checked image to GHCR
     if: github.ref == 'refs/heads/master'
+    concurrency:
+      group: docker-publish
+      queue: max
     runs-on: ubuntu-26.04
     permissions:
       contents: read
