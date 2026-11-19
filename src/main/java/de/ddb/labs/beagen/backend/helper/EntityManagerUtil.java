@@ -18,6 +18,8 @@ package de.ddb.labs.beagen.backend.helper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  *
@@ -41,6 +43,14 @@ public class EntityManagerUtil {
 
     public EntityManager getEntityManager() {
         return EMF.createEntityManager();
+    }
+
+    public <T> T callInTransaction(Function<EntityManager, T> action) {
+        return EMF.callInTransaction(action);
+    }
+
+    public void runInTransaction(Consumer<EntityManager> action) {
+        EMF.runInTransaction(action);
     }
 
     public void shutdown() {

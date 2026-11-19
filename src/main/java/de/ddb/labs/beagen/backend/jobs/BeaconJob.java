@@ -24,7 +24,6 @@ import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
 import de.ddb.labs.beagen.backend.helper.DDBApi;
 import de.ddb.labs.beagen.backend.helper.EntityFacts;
-import de.ddb.labs.beagen.backend.helper.EntityManagerUtil;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -33,9 +32,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -43,8 +40,6 @@ import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.PersistenceException;
 import lombok.Getter;
 import lombok.Setter;
@@ -86,7 +81,7 @@ public class BeaconJob implements Job {
                 + "&wt=json");
     }
 
-    private final static String NEWSPAPAER_SEARCH = "/search/index/newspaper/select?"
+    private static final String NEWSPAPER_SEARCH = "/search/index/newspaper/select?"
             + "q=hasLoadedIssues:true"
             + "&rows=2147483647"
             + "&wt=csv"
@@ -112,49 +107,39 @@ public class BeaconJob implements Job {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int count = 0;
 
-        try (final InputStream is = DDBApi.httpGet(URL + NEWSPAPAER_SEARCH);
+        try (final InputStream is = DDBApi.httpGet(URL + NEWSPAPER_SEARCH);
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
                 final BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(baos), StandardCharsets.UTF_8))) {
 
-            boolean firstLine = true;
+            String header = reader.readLine();
+            if (header != null && header.startsWith("\uFEFF")) {
+                header = header.substring(1);
+            }
+            if (!"id".equals(header) && !"\"id\"".equals(header)) {
+                throw new IOException("Missing or invalid newspaper CSV header");
+            }
+
             for (String line; (line = reader.readLine()) != null;) {
-                if (firstLine) {
-                    firstLine = false;
-                    continue;
-                }
                 bw.append(line);
                 bw.newLine();
                 count++;
             }
-        } catch (Exception ex) {
-            log.error("Error while processing entity data of Newspaper. {}", ex.getMessage());
-        }
-
-        try {
-            baos.flush();
         } catch (IOException ex) {
-            //nothing;
+            log.error("Could not download newspaper data. {}", ex.getMessage(), ex);
+            return;
         }
 
         final BeaconFile bf = new BeaconFile(TYPE.NEWSPAPER, SECTOR.ALL, date, count, baos.toByteArray());
-        final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(TYPE.NEWSPAPER, SECTOR.ALL, true);
-
-        if (lastBeaconinDatabaseList.isEmpty() || !bf.equals(lastBeaconinDatabaseList.get(0))) {
-            log.info("Writing {} entities of {} to database. Beacon file size is {}", count, SECTOR.ALL.getHumanName(), baos.size());
-            final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
-            final EntityTransaction tx = em.getTransaction();
-            tx.begin();
-            em.persist(bf);
-            tx.commit();
-            em.close();
-        } else {
-            log.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", TYPE.NEWSPAPER, SECTOR.ALL);
-        }
-
         try {
-            baos.close();
-        } catch (IOException e) {
-            //nothing
+            final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(TYPE.NEWSPAPER, SECTOR.ALL, true);
+            if (lastBeaconinDatabaseList.isEmpty() || !bf.equals(lastBeaconinDatabaseList.getFirst())) {
+                log.info("Writing {} entities of {} to database. Beacon file size is {}", count, SECTOR.ALL.getHumanName(), baos.size());
+                BeaconFileController.saveBeaconFile(bf);
+            } else {
+                log.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", TYPE.NEWSPAPER, SECTOR.ALL);
+            }
+        } catch (PersistenceException ex) {
+            log.error("Could not write the newspaper Beacon file. {}", ex.getMessage(), ex);
         }
     }
 
@@ -173,6 +158,7 @@ public class BeaconJob implements Job {
         }
 
         try {
+            final List<EntityCounts> data = getDataFromDdbApi(type);
             final EnumMap<SECTOR, ByteArrayOutputStream> byteStreams = new EnumMap<>(SECTOR.class);
             final EnumMap<SECTOR, BufferedWriter> writers = new EnumMap<>(SECTOR.class);
 
@@ -185,8 +171,6 @@ public class BeaconJob implements Job {
                 writers.put(sector, new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(byteStreams.get(sector)), StandardCharsets.UTF_8)));
                 counts.put(sector, 0);
             }
-
-            final List<EntityCounts> data = getDataFromDdbApi(type);
 
             log.info("Start generating Beacon files of type {}...", type);
 
@@ -237,7 +221,6 @@ public class BeaconJob implements Job {
 
             for (SECTOR sector : sectors) {
                 writers.get(sector).close();
-                byteStreams.get(sector).flush();
                 if (counts.get(sector) > 0) {
                     final BeaconFile files_sector = new BeaconFile();
                     files_sector.setSector(sector);
@@ -247,28 +230,22 @@ public class BeaconJob implements Job {
                     files_sector.setContent(byteStreams.get(sector).toByteArray());
 
                     final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(type, sector, true);
-                    if (lastBeaconinDatabaseList.isEmpty() || !files_sector.equals(lastBeaconinDatabaseList.get(0))) {
+                    if (lastBeaconinDatabaseList.isEmpty() || !files_sector.equals(lastBeaconinDatabaseList.getFirst())) {
                         log.info("Writing {} entities of {} to database. Beacon file size is {}", counts.get(sector), sector.getHumanName(), byteStreams.get(sector).size());
-                        final EntityManager em = EntityManagerUtil.getInstance().getEntityManager();
-                        final EntityTransaction tx = em.getTransaction();
-                        tx.begin();
-                        em.persist(files_sector);
-                        tx.commit();
-                        em.close();
+                        BeaconFileController.saveBeaconFile(files_sector);
                     } else {
                         log.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", type, sector);
                     }
                 }
-                byteStreams.get(sector).close();
             }
-        } catch (ParseException | IOException | JacksonException | PersistenceException ex) {
-            log.error("Error while processing entity data. {}", ex.getMessage());
+        } catch (IOException | JacksonException | PersistenceException ex) {
+            log.error("Error while processing {} entity data. {}", type, ex.getMessage(), ex);
         }
 
         log.info("BEACON maker job finished.");
     }
 
-    private List<EntityCounts> getDataFromDdbApi(TYPE type) throws IOException, ParseException {
+    private List<EntityCounts> getDataFromDdbApi(TYPE type) throws IOException {
 
         final String baseUrl = URL + SEARCH.get(type);
 
@@ -276,19 +253,30 @@ public class BeaconJob implements Job {
         String nextCursorMark = "*";
 
         while (true) {
-            final String url = baseUrl + "&cursorMark=" + URLEncoder.encode(nextCursorMark, Charset.forName("UTF-8"));
-            final InputStream is = DDBApi.httpGet(url);
+            final String url = baseUrl + "&cursorMark=" + URLEncoder.encode(nextCursorMark, StandardCharsets.UTF_8);
             log.debug("Query: {}", url);
 
-            final JsonNode doc = mapper.readTree(is);
-            final String nextCursorMarkLocal = doc.get("nextCursorMark").asString("");
+            final JsonNode doc;
+            try (final InputStream input = DDBApi.httpGet(url)) {
+                doc = mapper.readTree(input);
+            }
+            if (doc == null) {
+                throw new IOException("Empty DDB API response for " + type);
+            }
+            final JsonNode cursor = doc.path("nextCursorMark");
+            final JsonNode response = doc.path("response");
+            final JsonNode numFound = response.path("numFound");
+            final JsonNode docsArray = response.path("docs");
+            if (!cursor.isString() || !numFound.isIntegralNumber() || !docsArray.isArray()) {
+                throw new IOException("Invalid DDB API response for " + type);
+            }
+            final String nextCursorMarkLocal = cursor.asString();
             if (nextCursorMarkLocal.equals(nextCursorMark)) {
                 nextCursorMark = "";
             } else {
                 nextCursorMark = nextCursorMarkLocal;
             }
-            int totalCount = doc.get("response").get("numFound").asInt(0);
-            final JsonNode docsArray = doc.get("response").get("docs");
+            final int totalCount = numFound.asInt();
             final List<EntityCounts> ec = Arrays.asList(mapper.treeToValue(docsArray, EntityCounts[].class));
             list.addAll(ec);
 

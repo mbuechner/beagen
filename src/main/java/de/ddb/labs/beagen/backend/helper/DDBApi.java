@@ -17,18 +17,15 @@ package de.ddb.labs.beagen.backend.helper;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.ConnectException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  *
  * @author Michael Büchner
  */
-@Slf4j
 public class DDBApi {
 
     private static final OkHttpClient client = new OkHttpClient.Builder()
@@ -40,21 +37,17 @@ public class DDBApi {
     private DDBApi() {
     }
 
-    public static InputStream httpGet(final String urlStr) throws ConnectException, IOException {
-        try {
-            final Request request = new Request.Builder()
-                    .url(urlStr)
-                    .build();
-            final Response response = client.newCall(request).execute();
-
-            // test if request was successful (status 200)
-            if (!response.isSuccessful() || response.code() == 403) {
-                throw new ConnectException("HTTP status code for " + urlStr + " is " + response.code() + ". " + response.body().string());
-            }
+    public static InputStream httpGet(final String urlStr) throws IOException {
+        final Request request = new Request.Builder()
+                .url(urlStr)
+                .build();
+        final Response response = client.newCall(request).execute();
+        if (response.isSuccessful()) {
+            // Closing the returned stream closes the response body.
             return response.body().byteStream();
-        } catch (Exception ex) {
-            log.warn("Could not get data from Entity Facts for {}. {}", urlStr, ex.getMessage());
-            return null;
+        }
+        try (response) {
+            throw new IOException("HTTP status code for " + urlStr + " is " + response.code());
         }
     }
 }
