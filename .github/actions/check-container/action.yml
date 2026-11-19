@@ -1,10 +1,25 @@
-name: Check Beagen container
-description: Verify HTTP startup and scan the running image and resolved Maven dependencies.
+name: Check HTTP container
+description: Probe HTTP startup and scan the image and its optional CycloneDX SBOM.
 
 inputs:
   image:
     description: Local tag or pulled registry digest to test and scan.
     required: true
+  container-port:
+    description: TCP port used by the HTTP server inside the container.
+    required: true
+  http-path:
+    description: Loopback HTTP request path. An HTTP 2xx or 3xx response passes the probe.
+    default: '/'
+  container-user:
+    description: Optional Docker user or UID with an optional group. Defaults to the image user.
+    default: ''
+  container-env:
+    description: Optional container environment variables, one NAME=VALUE per line.
+    default: ''
+  cyclonedx-path:
+    description: Optional absolute path to a CycloneDX JSON SBOM with components inside the container.
+    default: ''
   block-on-fixable:
     description: Fail on fixable High or Critical findings covered by the release policy.
     default: 'false'
@@ -12,15 +27,42 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Smoke-test the container as a non-root user and extract its SBOM
+    - name: Probe HTTP startup and collect the optional SBOM
       id: smoke
       env:
         IMAGE: ${{ inputs.image }}
+        CONTAINER_PORT: ${{ inputs.container-port }}
+        HTTP_PATH: ${{ inputs.http-path }}
+        CONTAINER_USER: ${{ inputs.container-user }}
+        CONTAINER_ENV: ${{ inputs.container-env }}
+        CYCLONEDX_PATH: ${{ inputs.cyclonedx-path }}
       shell: bash
       run: |
-        container="$(docker run --detach --user 10001:0 --publish 127.0.0.1::8080 \
-          --env 'beagen.database=mem:ci;DB_CLOSE_DELAY=-1' \
-          --env 'beagen.cron=0 0 0 1 1 ? 2099' "$IMAGE")"
+        if [[ ! "$CONTAINER_PORT" =~ ^[1-9][0-9]{0,4}$ ]] || (( CONTAINER_PORT > 65535 )); then
+          echo '::error::container-port must be an integer from 1 to 65535.'
+          exit 1
+        fi
+        if [[ "$HTTP_PATH" != /* || ( -n "$CYCLONEDX_PATH" && "$CYCLONEDX_PATH" != /* ) ]]; then
+          echo '::error::http-path and any cyclonedx-path must start with /.'
+          exit 1
+        fi
+
+        args=(--detach --publish "127.0.0.1::${CONTAINER_PORT}")
+        if [[ -n "$CONTAINER_USER" ]]; then
+          args+=(--user "$CONTAINER_USER")
+        fi
+        while IFS= read -r entry; do
+          if [[ -z "$entry" ]]; then
+            continue
+          fi
+          if [[ "$entry" != ?*=* ]]; then
+            echo '::error::Each container-env entry must use NAME=VALUE.'
+            exit 1
+          fi
+          args+=(--env "$entry")
+        done <<< "$CONTAINER_ENV"
+
+        container="$(docker run "${args[@]}" -- "$IMAGE")"
         cleanup() {
           if [[ $? -ne 0 ]]; then
             docker inspect --format '{{json .State}}' "$container" >&2 || true
@@ -30,21 +72,21 @@ runs:
         }
         trap cleanup EXIT
 
-        url="http://$(docker port "$container" 8080/tcp)"
-        json="$RUNNER_TEMP/beagen-smoke.json"
-        # Docker may reset the connection before Java starts listening. Retry into a file so partial responses are discarded.
-        curl --fail --silent --show-error --retry 25 --retry-all-errors --retry-delay 1 \
-          --retry-max-time 30 --max-time 5 --header 'Accept: application/json' \
-          --output "$json" "$url/list/latest"
-        jq -e '. == []' "$json"
-        curl --fail --silent --show-error --max-time 5 --header 'Accept: text/html' "$url/list/latest" \
-          --output "$RUNNER_TEMP/beagen-smoke.html"
-        grep -qi '<!DOCTYPE html>' "$RUNNER_TEMP/beagen-smoke.html"
+        url="http://$(docker port "$container" "${CONTAINER_PORT}/tcp")${HTTP_PATH}"
+        # The port may accept connections before the server can respond.
+        curl --fail --silent --show-error --globoff --noproxy '*' --retry 25 --retry-all-errors \
+          --retry-delay 1 --retry-max-time 30 --max-time 5 --output /dev/null "$url"
 
-        sbom="$RUNNER_TEMP/beagen-maven-sbom.json"
-        docker cp "$container:/home/beagen/beagen-sbom.json" "$sbom"
-        jq -e '.bomFormat == "CycloneDX" and (.components | length > 0)' "$sbom" >/dev/null
-        echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
+        if [[ -n "$CYCLONEDX_PATH" ]]; then
+          sbom_dir="$(mktemp -d "$RUNNER_TEMP/container-sbom.XXXXXX")"
+          sbom="$sbom_dir/sbom.json"
+          docker cp "$container:$CYCLONEDX_PATH" "$sbom"
+          if [[ ! -f "$sbom" || -L "$sbom" ]] || ! jq -e '.bomFormat == "CycloneDX" and (.components | type == "array" and length > 0)' "$sbom" >/dev/null; then
+            echo '::error::Expected a CycloneDX JSON SBOM with components.'
+            exit 1
+          fi
+          echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Scan image for known vulnerabilities
       id: image-scan
@@ -55,8 +97,9 @@ runs:
         fail-build: false
         by-cve: true
 
-    - name: Scan resolved Maven dependencies from the image SBOM
-      id: maven-scan
+    - name: Scan dependencies from the image SBOM
+      id: sbom-scan
+      if: inputs.cyclonedx-path != ''
       uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
       with:
         sbom: ${{ steps.smoke.outputs.sbom }}
@@ -67,22 +110,28 @@ runs:
     - name: Summarize findings and apply release policy
       env:
         IMAGE_SCAN: ${{ steps.image-scan.outputs.json }}
-        MAVEN_SCAN: ${{ steps.maven-scan.outputs.json }}
+        SBOM_SCAN: ${{ steps.sbom-scan.outputs.json }}
+        CYCLONEDX_PATH: ${{ inputs.cyclonedx-path }}
         BLOCK_ON_FIXABLE: ${{ inputs.block-on-fixable }}
       shell: bash
       run: |
-        for result in "$IMAGE_SCAN" "$MAVEN_SCAN"; do
+        scans=("$IMAGE_SCAN")
+        if [[ -n "$CYCLONEDX_PATH" ]]; then
+          scans+=("$SBOM_SCAN")
+        fi
+        for result in "${scans[@]}"; do
           jq -e '.matches | type == "array"' "$result" >/dev/null
         done
         findings="$(jq --slurp '
           [.[].matches[] | select(.vulnerability.severity == "High" or .vulnerability.severity == "Critical")]
           | unique_by(.vulnerability.id, .artifact.type, .artifact.name, .artifact.version, .vulnerability.namespace, .vulnerability.fix.state)
-        ' "$IMAGE_SCAN" "$MAVEN_SCAN")"
+        ' "${scans[@]}")"
         # Ubuntu's OpenSSL and util-linux packages can carry backported upstream fixes.
         # Use Ubuntu's package advisories for these packages and still report their generic CPE matches.
-        fixable="$(jq '
+        ubuntu="$(jq '.distro.name == "ubuntu"' "$IMAGE_SCAN")"
+        fixable="$(jq --argjson ubuntu "$ubuntu" '
           [.[] | select(.vulnerability.fix.state == "fixed") | select(
-            (.artifact.type == "binary" and .vulnerability.namespace == "nvd:cpe"
+            ($ubuntu and .artifact.type == "binary" and .vulnerability.namespace == "nvd:cpe"
               and (.artifact.name == "openssl" or .artifact.name == "util-linux")) | not
           )] | length
         ' <<< "$findings")"
@@ -94,7 +143,9 @@ runs:
           jq -r '.[] | "| \(.vulnerability.id) | \(.artifact.name) | \(.artifact.version) | \(.artifact.type) | \(.vulnerability.severity) | \((.vulnerability.fix.versions // []) | join(", ")) |"' <<< "$findings"
           echo
           echo "Fixable findings covered by the release gate: $fixable"
-          echo 'Generic OpenSSL and util-linux CPE matches are advisory. Ubuntu package findings still apply.'
+          if [[ "$ubuntu" == 'true' ]]; then
+            echo 'Generic OpenSSL and util-linux CPE matches are advisory for Ubuntu.'
+          fi
         } >> "$GITHUB_STEP_SUMMARY"
         if [[ "$BLOCK_ON_FIXABLE" == 'true' && "$fixable" -gt 0 ]]; then
           echo "::error::Fixable High or Critical vulnerabilities block promotion. See the job summary."

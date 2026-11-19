@@ -77,6 +77,12 @@ jobs:
         uses: ./.github/actions/check-container
         with:
           image: ${{ steps.source.outputs.image }}@${{ steps.image.outputs.digest }}
+          container-port: '8080'
+          container-user: '10001:0'
+          container-env: |
+            beagen.database=mem:ci;DB_CLOSE_DELAY=-1
+            beagen.cron=0 0 0 1 1 ? 2099
+          cyclonedx-path: /home/beagen/beagen-sbom.json
           block-on-fixable: 'true'
       - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
       - name: Sign the digest and update deployment tags

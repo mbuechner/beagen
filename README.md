@@ -24,7 +24,7 @@ See [defaults](src/main/resources/beagen.cfg) for `beagen.port`, `beagen.cron` a
 OpenShift tracks the same `latest` image shown above. The daily build batches merged code and dependency changes with any base-image updates.
 
 1. PRs run `mvn verify`. Dependabot checks daily and bundles Maven minor and patch updates into one routine PR. Pushes and bot merges on `master` refresh the Maven dependency graph.
-2. At **08:17 Europe/Berlin**, CI pulls fresh Java 25 base images and builds `master`. A non-root smoke test and [CVE scans of the image and Maven SBOM](.github/actions/check-container/action.yml) gate signing with Cosign.
+2. At **08:17 Europe/Berlin**, CI pulls fresh Java 25 base images and builds `master`. The [container check](.github/actions/check-container/action.yml) probes HTTP as non-root and scans the image and its Maven SBOM before Cosign signs it. The workflow supplies the port, startup settings and optional SBOM path.
 3. GHCR moves `latest` when the signed digest changes. OpenShift rolls it out on the next poll.
 
 Push a Git tag like `v1.9.1` for an immutable release image. For an urgent `latest` build, use **Actions → Docker → Run workflow** on `master`.
