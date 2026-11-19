@@ -41,9 +41,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 import jakarta.persistence.Basic;
 import jakarta.persistence.FetchType;
@@ -189,9 +189,7 @@ public class BeaconFile implements Serializable {
 
     private String getBeaconHeader() throws IOException {
 
-        final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        sdf.setTimeZone(TimeZone.getDefault());
-        final String dt = sdf.format(getCreated());
+        final String dt = getCreated().toInstant().truncatedTo(ChronoUnit.SECONDS).toString();
 
         final StringBuilder sb = new StringBuilder();
 

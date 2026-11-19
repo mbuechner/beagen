@@ -29,8 +29,9 @@ import io.javalin.compression.Gzip;
 import io.javalin.config.RoutesConfig;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
-import io.javalin.http.NotFoundResponse;
+import io.javalin.http.Header;
 import io.javalin.http.HttpStatus;
+import io.javalin.http.NotFoundResponse;
 import io.javalin.json.JavalinJackson3;
 import io.javalin.rendering.template.JavalinMustache;
 import java.util.List;
@@ -175,7 +176,8 @@ public class Main {
     }
 
     private static void deliver(Context ctx, boolean latest) {
-        if (deliverHtml(ctx.req().getHeader("Accept"))) {
+        ctx.addHeader(Header.VARY, Header.ACCEPT);
+        if (deliverHtml(ctx.header(Header.ACCEPT))) {
             ctx.render("/base.mustache");
             return;
         }
