@@ -1,4 +1,4 @@
-FROM maven:3-eclipse-temurin-25-alpine AS maven_chain
+FROM maven:3-amazoncorretto-25 AS maven_chain
 COPY pom.xml /tmp/
 COPY src /tmp/src/
 WORKDIR /tmp/
