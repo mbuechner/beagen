@@ -4,7 +4,7 @@ COPY src /tmp/src/
 WORKDIR /tmp/
 RUN mvn -B -ntp clean verify
 
-FROM eclipse-temurin:25-jre-noble
+FROM amazoncorretto:25
 RUN mkdir /home/beagen
 COPY --from=maven_chain /tmp/target/beagen.jar /tmp/target/beagen-sbom.json /home/beagen/
 WORKDIR /home/beagen/

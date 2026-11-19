@@ -43,7 +43,7 @@ updates:
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 1
     ignore:
-      - dependency-name: "eclipse-temurin"
+      - dependency-name: "amazoncorretto"
         versions: [">= 26"]
       # Keep the Maven 3 / Java 25 tag. Builds pull its updated digest.
       - dependency-name: "maven"
