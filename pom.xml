@@ -41,7 +41,7 @@
         <project.build.outputTimestamp>1980-01-01T00:00:02Z</project.build.outputTimestamp>
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <hibernate.version>7.4.16.Final</hibernate.version>
+        <hibernate.version>7.4.17.Final</hibernate.version>
         <lombok.version>1.18.48</lombok.version>
         <spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
     </properties>
@@ -89,7 +89,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.6.7</version>
+            <version>1.6.8</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
