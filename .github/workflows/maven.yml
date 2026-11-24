@@ -25,7 +25,7 @@ jobs:
           java-version: '25'
           distribution: temurin
           cache: maven
-      - run: mvn -B -ntp verify
+      - run: ./mvnw -B -ntp verify
 
   dependency-graph:
     name: Submit Maven dependency graph
@@ -45,7 +45,6 @@ jobs:
           cache: maven
       - uses: advanced-security/maven-dependency-submission-action@a64327a7329c9939cf675e458452febe1894a70c # v6.0.1
         with:
-          ignore-maven-wrapper: true
           # Replace the legacy snapshot that recorded an absolute path to pom.xml.
           correlator: build
           detector-name: maven-dependency-tree-action

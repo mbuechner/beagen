@@ -22,7 +22,10 @@
 hs_err_pid*
 /target/
 /data/
-/.mvn/
+/.mvn/*
+!/.mvn/wrapper/
+/.mvn/wrapper/*
+!/.mvn/wrapper/maven-wrapper.properties
 /beagen.log.dir_IS_UNDEFINED/
 /nb-configuration.xml
 /derby.log

@@ -11,6 +11,9 @@ inputs:
   http-path:
     description: Loopback HTTP request path. An HTTP 2xx or 3xx response passes the probe.
     default: '/'
+  expect-json-list:
+    description: Request application/json and require a JSON array in the HTTP response.
+    default: 'false'
   container-user:
     description: Optional Docker user or UID with an optional group. Defaults to the image user.
     default: ''
@@ -33,6 +36,7 @@ runs:
         IMAGE: ${{ inputs.image }}
         CONTAINER_PORT: ${{ inputs.container-port }}
         HTTP_PATH: ${{ inputs.http-path }}
+        EXPECT_JSON_LIST: ${{ inputs.expect-json-list }}
         CONTAINER_USER: ${{ inputs.container-user }}
         CONTAINER_ENV: ${{ inputs.container-env }}
         CYCLONEDX_PATH: ${{ inputs.cyclonedx-path }}
@@ -63,10 +67,14 @@ runs:
         done <<< "$CONTAINER_ENV"
 
         container="$(docker run "${args[@]}" -- "$IMAGE")"
+        probe_body=''
         cleanup() {
           if [[ $? -ne 0 ]]; then
             docker inspect --format '{{json .State}}' "$container" >&2 || true
             docker logs "$container" >&2 || true
+          fi
+          if [[ -n "$probe_body" ]]; then
+            rm -f -- "$probe_body" || true
           fi
           docker rm -f "$container" >/dev/null
         }
@@ -74,8 +82,19 @@ runs:
 
         url="http://$(docker port "$container" "${CONTAINER_PORT}/tcp")${HTTP_PATH}"
         # The port may accept connections before the server can respond.
-        curl --fail --silent --show-error --globoff --noproxy '*' --retry 25 --retry-all-errors \
-          --retry-delay 1 --retry-max-time 30 --max-time 5 --output /dev/null "$url"
+        probe=(curl --fail --silent --show-error --globoff --noproxy '*' --retry 25 --retry-all-errors
+          --retry-delay 1 --retry-max-time 30 --max-time 5)
+        if [[ "$EXPECT_JSON_LIST" == 'true' ]]; then
+          probe_body="$(mktemp "$RUNNER_TEMP/container-probe.XXXXXX")"
+          # Curl can discard partial responses on retry when it owns the output file.
+          "${probe[@]}" --header 'Accept: application/json' --output "$probe_body" "$url"
+          if ! jq -e --slurp 'length == 1 and (.[0] | type == "array")' "$probe_body" >/dev/null; then
+            echo '::error::Expected the list endpoint to return a JSON array.'
+            exit 1
+          fi
+        else
+          "${probe[@]}" --output /dev/null "$url"
+        fi
 
         if [[ -n "$CYCLONEDX_PATH" ]]; then
           sbom_dir="$(mktemp -d "$RUNNER_TEMP/container-sbom.XXXXXX")"

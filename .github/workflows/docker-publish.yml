@@ -147,6 +147,8 @@ jobs:
         with:
           image: ${{ steps.source.outputs.image }}@${{ steps.image.outputs.digest || steps.bases.outputs.reusable_digest }}
           container-port: '8080'
+          http-path: '/list/latest?type=organisation&sector=all'
+          expect-json-list: 'true'
           container-user: '10001:0'
           container-env: |
             beagen.database=mem:ci;DB_CLOSE_DELAY=-1
