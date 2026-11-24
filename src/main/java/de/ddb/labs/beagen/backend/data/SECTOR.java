@@ -20,17 +20,28 @@ import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueSerializer;
 
 /**
+ * Cultural sectors used to group BEACON entries and filter snapshot history.
+ * Each value maps a DDB count field to its display label, download filename component,
+ * and configuration key. {@link #ALL} represents its own aggregate snapshot.
  *
  * @author Michael Büchner
  */
 public enum SECTOR {
+    /** Aggregate entry count across the cultural sectors. */
     ALL("count", "all", "Alle", "all", ""),
+    /** Archives. */
     ARCHIVE("count_sec_01", "sec_01", "Archiv", "archive", "http://ddb.vocnet.org/sparte/sparte001"),
+    /** Libraries. */
     LIBRARY("count_sec_02", "sec_02", "Bibliothek", "library", "http://ddb.vocnet.org/sparte/sparte002"),
+    /** Monument protection. */
     MONUMENTPROTECTION("count_sec_03", "sec_03", "Denkmalpflege", "monument-protection", "http://ddb.vocnet.org/sparte/sparte003"),
+    /** Research institutions. */
     RESEARCH("count_sec_04", "sec_04", "Forschung", "research", "http://ddb.vocnet.org/sparte/sparte004"),
+    /** Media collections. */
     MEDIA("count_sec_05", "sec_05", "Mediathek", "media", "http://ddb.vocnet.org/sparte/sparte005"),
+    /** Museums. */
     MUSEUM("count_sec_06", "sec_06", "Museum", "museum", "http://ddb.vocnet.org/sparte/sparte006"),
+    /** The DDB category for other sectors. */
     OTHER("count_sec_07", "sec_07", "Sonstige", "other", "http://ddb.vocnet.org/sparte/sparte007");
 
     private final String jsonKey, abbr, fileName, humanName, uri;
@@ -43,28 +54,54 @@ public enum SECTOR {
         this.fileName = fileName;
     }
 
+    /**
+     * Returns the field name for this sector's count in the DDB import data.
+     *
+     * @return the source JSON field name
+     */
     public String getJsonKey() {
         return jsonKey;
     }
 
+    /**
+     * Returns the short sector code used in header configuration and JSON history responses.
+     *
+     * @return the short sector code
+     */
     public String getShortName() {
         return abbr;
     }
 
+    /**
+     * Returns the German label displayed in the snapshot history.
+     *
+     * @return the human-readable sector label
+     */
     public String getHumanName() {
         return humanName;
     }
 
+    /**
+     * Returns the component used to build a sector-specific download filename.
+     *
+     * @return the sector's filename component
+     */
     public String getFileName() {
         return fileName;
     }
 
+    /**
+     * Returns the identifier from the DDB cultural-sector vocabulary.
+     *
+     * @return the vocabulary URI, or an empty string for the aggregate sector
+     */
     public String getUri() {
         return uri;
     }
 
     /**
-     * Json Serializer for output over API
+     * Serializes the sector's short code and label for the history API.
+     * The vocabulary URI is included when the sector has one.
      */
     public static class SectorSerializer extends ValueSerializer<SECTOR> {
 

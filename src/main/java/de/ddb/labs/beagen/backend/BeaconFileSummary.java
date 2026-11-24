@@ -23,6 +23,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import tools.jackson.databind.annotation.JsonSerialize;
 
+/**
+ * Snapshot metadata returned by the JSON history API without the compressed data.
+ *
+ * @param type entity type covered by the snapshot
+ * @param sector sector covered by the snapshot
+ * @param created creation timestamp formatted as an ISO-8601 UTC instant
+ * @param count number of data entries
+ * @param id database identifier serialized as the download permalink
+ */
 @JsonPropertyOrder({"type", "sector", "created", "count", "@id"})
 public record BeaconFileSummary(
         @JsonSerialize(using = TYPE.TypeSerializer.class) TYPE type,
@@ -31,6 +40,15 @@ public record BeaconFileSummary(
         int count,
         @JsonProperty("@id") @JsonSerialize(using = BeaconFile.IdSerializer.class) Long id) {
 
+    /**
+     * Creates the summary from a database projection, truncating the creation time to seconds.
+     *
+     * @param type entity type covered by the snapshot
+     * @param sector sector covered by the snapshot
+     * @param created creation time read from the database
+     * @param count number of data entries
+     * @param id database identifier of the snapshot
+     */
     public BeaconFileSummary(TYPE type, SECTOR sector, Date created, int count, Long id) {
         this(type, sector, created.toInstant().truncatedTo(ChronoUnit.SECONDS).toString(), count, id);
     }

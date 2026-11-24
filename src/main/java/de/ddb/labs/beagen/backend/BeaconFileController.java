@@ -18,34 +18,65 @@ package de.ddb.labs.beagen.backend;
 import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
 import de.ddb.labs.beagen.backend.helper.EntityManagerUtil;
-import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import jakarta.persistence.TypedQuery;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Database handler for Beacon files
+ * Stores and queries BEACON snapshots in the application database.
+ *
+ * <p>History queries order snapshots by descending creation time, then by type and sector,
+ * with descending IDs as the final tie-breaker. List views can use the metadata projection
+ * to avoid loading compressed file contents.
  *
  * @author Michael Büchner
  */
-@Slf4j
 public class BeaconFileController {
 
+    private static final Logger log = LoggerFactory.getLogger(BeaconFileController.class);
     private static final AtomicLong listRevision = new AtomicLong();
 
     private BeaconFileController() {
     }
 
+    /**
+     * Persists a snapshot and advances the list revision after the transaction succeeds.
+     *
+     * @param beaconFile snapshot to persist
+     * @throws IllegalArgumentException if the snapshot has no positive entry count
+     */
     public static void saveBeaconFile(BeaconFile beaconFile) {
-        if (beaconFile.getCount() <= 0) {
-            throw new IllegalArgumentException("A BEACON file must contain at least one entry.");
+        saveBeaconFiles(List.of(beaconFile));
+    }
+
+    /**
+     * Persists a batch of snapshots in a single transaction.
+     * All entry counts are checked before the transaction starts.
+     *
+     * @param files snapshots to persist, or an empty list to leave the database untouched
+     * @throws IllegalArgumentException if any snapshot has no positive entry count
+     */
+    public static void saveBeaconFiles(List<BeaconFile> files) {
+        if (files.isEmpty()) {
+            return;
         }
-        EntityManagerUtil.getInstance().runInTransaction(em -> em.persist(beaconFile));
+        for (BeaconFile file : files) {
+            if (file.getCount() <= 0) {
+                throw new IllegalArgumentException("A BEACON file must contain at least one entry.");
+            }
+        }
+        EntityManagerUtil.getInstance().runInTransaction(em -> files.forEach(em::persist));
         listRevision.incrementAndGet();
     }
 
+    /**
+     * Removes legacy zero-entry snapshots during startup.
+     * Cleanup failures are logged so the application can continue starting.
+     */
     public static void deleteEmptyBeaconFiles() {
         try {
             final int deleted = EntityManagerUtil.getInstance().callInTransaction(em ->
@@ -59,32 +90,33 @@ public class BeaconFileController {
         }
     }
 
+    /**
+     * Returns the in-process revision used to invalidate cached list responses.
+     * A successful nonempty save or deletion advances the revision.
+     *
+     * @return the current list revision
+     */
     public static long getListRevision() {
         return listRevision.get();
     }
 
     /**
-     * Get a Beacon file by its ID.
+     * Loads a snapshot for a download by its database identifier.
      *
-     * @param id ID of Beacon File
-     * @return Beacon file object
+     * @param id database identifier of the snapshot
+     * @return the matching snapshot or {@code null} if it is absent
      */
     public static BeaconFile getBeaconFile(long id) {
-
-        try {
-            return EntityManagerUtil.getInstance().callInTransaction(em -> em.find(BeaconFile.class, id));
-        } catch (Exception e) {
-            log.error("Could not get Beacon file. {}", e.getMessage(), e);
-            return null;
-        }
+        return EntityManagerUtil.getInstance().callInTransaction(em -> em.find(BeaconFile.class, id));
     }
 
     /**
-     * Get Beacon files by type (organsisation or person).
+     * Lists snapshots across sectors, optionally limited to one entity type.
+     * Query failures are logged and produce an empty result.
      *
-     * @param type Type, can be null, which means all types
-     * @param onlyLatest Provide only the latest Beacon files
-     * @return List of Beacon file objects
+     * @param type entity type or {@code null} to include every type
+     * @param onlyLatest whether to return at most the first snapshot in history order
+     * @return the matching snapshots in history order
      */
     public static List<BeaconFile> getBeaconFiles(TYPE type, boolean onlyLatest) {
         final Date lastDate = onlyLatest ? getLastDate(type) : null;
@@ -99,7 +131,7 @@ public class BeaconFileController {
             qs += "WHERE f.type = :type ";
         }
 
-        final String query = qs + "ORDER BY f.created DESC, f.type, f.sector";
+        final String query = qs + "ORDER BY f.created DESC, f.type, f.sector, f.id DESC";
 
         try {
             return EntityManagerUtil.getInstance().callInTransaction(em -> {
@@ -126,23 +158,27 @@ public class BeaconFileController {
     }
 
     /**
-     * Get Beacon files by type (organsisation or person) and sector (Archive,
-     * Musem etc.)
+     * Lists snapshots for one sector with an optional entity-type filter.
+     * {@link SECTOR#ALL ALL} selects the aggregate snapshots.
      *
-     * @param type Type, can be null, which means all types
-     * @param sector Sector, cannot be null.
-     * @param onlyLatest Provide only the latest Beacon files
-     * @return List of Beacon file objects
+     * @param type entity type or {@code null} to include every type
+     * @param sector required sector of the snapshots
+     * @param onlyLatest whether to return at most the first snapshot in history order
+     * @return the matching snapshots in history order
      */
     public static List<BeaconFile> getBeaconFiles(TYPE type, SECTOR sector, boolean onlyLatest) {
-        try {
-            return selectBeaconFiles("SELECT f", BeaconFile.class, type, sector, onlyLatest);
-        } catch (Exception e) {
-            log.error("Could not get Beacon files. {}", e.getMessage(), e);
-            return new ArrayList<>();
-        }
+        return selectBeaconFiles("SELECT f", BeaconFile.class, type, sector, onlyLatest);
     }
 
+    /**
+     * Lists snapshot metadata without selecting the compressed payloads.
+     * The filters and ordering match {@link #getBeaconFiles(TYPE, SECTOR, boolean)}.
+     *
+     * @param type entity type or {@code null} to include every type
+     * @param sector required sector of the snapshots
+     * @param onlyLatest whether to return at most the first summary in history order
+     * @return metadata for the matching snapshots in history order
+     */
     public static List<BeaconFileSummary> getBeaconFileSummaries(TYPE type, SECTOR sector, boolean onlyLatest) {
         final String projection = "SELECT NEW de.ddb.labs.beagen.backend.BeaconFileSummary(f.type, f.sector, f.created, f.count, f.id)";
         return selectBeaconFiles(projection, BeaconFileSummary.class, type, sector, onlyLatest);
@@ -151,7 +187,7 @@ public class BeaconFileController {
     private static <T> List<T> selectBeaconFiles(String projection, Class<T> resultType, TYPE type, SECTOR sector, boolean onlyLatest) {
         final String query = projection + " FROM BeaconFile AS f WHERE "
                 + (type == null ? "" : "f.type = :type AND ")
-                + "f.sector = :sector ORDER BY f.created DESC, f.type, f.sector";
+                + "f.sector = :sector ORDER BY f.created DESC, f.type, f.sector, f.id DESC";
 
         return EntityManagerUtil.getInstance().callInTransaction(em -> {
             final TypedQuery<T> selection = em.createQuery(query, resultType);
@@ -167,10 +203,10 @@ public class BeaconFileController {
     }
 
     /**
-     * Get last update date of Beacon files.
+     * Finds the most recent snapshot creation time across sectors.
      *
-     * @param type Type, can be null, which means all types
-     * @return Date of last Beacon file update
+     * @param type entity type or {@code null} to include every type
+     * @return the latest creation time, or {@code null} if no time is available or the query fails
      */
     public static Date getLastDate(TYPE type) {
         final String query = "SELECT MAX(f.created) FROM BeaconFile AS f"

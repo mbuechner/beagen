@@ -15,6 +15,7 @@
  */
 package de.ddb.labs.beagen.backend.jobs;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -24,12 +25,14 @@ import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
 import de.ddb.labs.beagen.backend.helper.DDBApi;
 import de.ddb.labs.beagen.backend.helper.EntityFacts;
+import de.ddb.labs.beagen.backend.helper.ImportCancellation;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -37,33 +40,41 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumMap;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.GZIPOutputStream;
 import jakarta.persistence.PersistenceException;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.SchedulerException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
+ * Imports newspaper titles, organisations, and people from the Deutsche Digitale
+ * Bibliothek and saves new or changed BEACON files.
+ * Person and organisation imports require a complete set of search results before
+ * generating files for the individual cultural sectors.
  *
  * @author Michael Büchner
  */
-@Slf4j
 @DisallowConcurrentExecution
 public class BeaconJob implements Job {
 
-    // URL of DDB server with dataset ID
+    /** Scheduler context key for the shared {@link ImportCancellation} tracker. */
+    public static final String CANCELLATION_KEY = "beagen.importCancellation";
+    private static final Logger log = LoggerFactory.getLogger(BeaconJob.class);
+    private static final List<String> GND_PREFIXES = List.of("http://d-nb.info/gnd/", "https://d-nb.info/gnd/");
+
     private static final String URL = "https://api.deutsche-digitale-bibliothek.de/2";
     private static final EnumMap<TYPE, String> SEARCH = new EnumMap<>(TYPE.class);
 
     private final JsonMapper mapper = JsonMapper.builderWithJackson2Defaults().build();
 
-    // count of entities per query
+    // Maximum number of entities requested per cursor page.
     private static final int ENTITYCOUNT = 10000;
 
     static {
@@ -89,25 +100,46 @@ public class BeaconJob implements Job {
             + "&sort=id ASC";
 
     /**
+     * Creates an import job for Quartz to schedule.
+     */
+    public BeaconJob() {
+    }
+
+    /**
+     * Runs the newspaper, organisation, and person imports in order, assigning
+     * the same timestamp to the files created in this run.
+     * Cancellation stops the remaining imports without undoing files already saved.
      *
-     * @param context
-     * @throws JobExecutionException
+     * @param context the job context whose scheduler provides the cancellation tracker
+     * @throws JobExecutionException if the scheduler context cannot be read or has no tracker
      */
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        // Date                  
+        final ImportCancellation cancellation;
+        try {
+            cancellation = (ImportCancellation) context.getScheduler().getContext().get(CANCELLATION_KEY);
+        } catch (SchedulerException e) {
+            throw new JobExecutionException(e);
+        }
+        if (cancellation == null) {
+            throw new JobExecutionException("Import cancellation context is missing");
+        }
         final Date date = new Date();
-        executeNewspapers(date);
-        execute(TYPE.ORGANISATION, SECTOR.values(), date);
-        execute(TYPE.PERSON, SECTOR.values(), date);
+        try {
+            executeNewspapers(date, cancellation);
+            execute(TYPE.ORGANISATION, SECTOR.values(), date, cancellation);
+            execute(TYPE.PERSON, SECTOR.values(), date, cancellation);
+        } catch (InterruptedIOException e) {
+            log.info("BEACON import cancelled.");
+        }
     }
 
-    public void executeNewspapers(Date date) {
+    private void executeNewspapers(Date date, ImportCancellation cancellation) throws InterruptedIOException {
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int count = 0;
 
-        try (final InputStream is = DDBApi.httpGet(URL + NEWSPAPER_SEARCH);
+        try (final InputStream is = DDBApi.httpGet(URL + NEWSPAPER_SEARCH, cancellation);
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
                 final BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(baos), StandardCharsets.UTF_8))) {
 
@@ -120,6 +152,7 @@ public class BeaconJob implements Job {
             }
 
             for (String line; (line = reader.readLine()) != null;) {
+                cancellation.check();
                 if (!line.isBlank()) {
                     bw.append(line);
                     bw.newLine();
@@ -127,6 +160,7 @@ public class BeaconJob implements Job {
                 }
             }
         } catch (IOException ex) {
+            cancellation.check();
             log.error("Could not download newspaper data. {}", ex.getMessage(), ex);
             return;
         }
@@ -138,8 +172,8 @@ public class BeaconJob implements Job {
 
         final BeaconFile bf = new BeaconFile(TYPE.NEWSPAPER, SECTOR.ALL, date, count, baos.toByteArray());
         try {
-            final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(TYPE.NEWSPAPER, SECTOR.ALL, true);
-            if (lastBeaconinDatabaseList.isEmpty() || !bf.equals(lastBeaconinDatabaseList.getFirst())) {
+            if (isChanged(bf)) {
+                cancellation.check();
                 log.info("Writing {} entities of {} to database. Beacon file size is {}", count, SECTOR.ALL.getHumanName(), baos.size());
                 BeaconFileController.saveBeaconFile(bf);
             } else {
@@ -151,13 +185,10 @@ public class BeaconJob implements Job {
     }
 
     /**
-     * Execute the generation of the BEACON files
-     *
-     * @param type For which types
-     * @param sectors For which sectors
-     * @param date Date to set for BEACOn files
+     * Resolves each entity's GND identifier once and reuses it for every sector.
+     * Saves the nonempty, changed files for this type together after processing all sectors.
      */
-    public void execute(TYPE type, SECTOR[] sectors, Date date) {
+    private void execute(TYPE type, SECTOR[] sectors, Date date, ImportCancellation cancellation) throws InterruptedIOException {
         log.info("Start BEACON maker job for {}...", type);
         if (SEARCH.get(type) == null || SEARCH.get(type).isEmpty()) {
             log.warn("Could not generate search query for type {}. Generation of Beacon file(s) canceled.", type);
@@ -165,268 +196,205 @@ public class BeaconJob implements Job {
         }
 
         try {
-            final List<EntityCounts> data = getDataFromDdbApi(type);
-            final EnumMap<SECTOR, ByteArrayOutputStream> byteStreams = new EnumMap<>(SECTOR.class);
-            final EnumMap<SECTOR, BufferedWriter> writers = new EnumMap<>(SECTOR.class);
-
-            // count of entities (person, org)
-            final EnumMap<SECTOR, Integer> counts = new EnumMap<>(SECTOR.class);
-
-            // init Beacon map
-            for (SECTOR sector : sectors) {
-                byteStreams.put(sector, new ByteArrayOutputStream());
-                writers.put(sector, new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(byteStreams.get(sector)), StandardCharsets.UTF_8)));
-                counts.put(sector, 0);
-            }
-
+            final List<ResolvedEntity> data = resolveEntities(getDataFromDdbApi(type, cancellation), sectors, cancellation);
+            final List<BeaconFile> changed = new ArrayList<>();
             log.info("Start generating Beacon files of type {}...", type);
-
-            int count = 0;
-
-            for (final Iterator<EntityCounts> it = data.iterator(); it.hasNext();) {
-
-                if (count == data.size() - 1) {
-                    log.info("{} data processed: {}/{}", type, (count + 1), data.size());
-                } else if (count % 10000 == 0) {
-                    log.info("{} data processed: {}/{}", type, count, data.size());
-                }
-                count++;
-
-                final EntityCounts ex = it.next();
-
-                for (SECTOR sector : sectors) {
-
-                    if (ex.hasCount(sector)) {
-
-                        String id = ex.getId();
-                        if (id.toLowerCase().startsWith("http://d-nb.info/gnd/")) {
-                            id = id.substring(21);
-                        } else if (id.toLowerCase().startsWith("https://d-nb.info/gnd/")) {
-                            id = id.substring(22);
-                        } else if (id.length() == 32
-                                && !ex.getVariant_id().isEmpty()
-                                && ex.getVariant_id().get(0).toLowerCase().startsWith("http://d-nb.info/gnd/")) {
-                            id = EntityFacts.getGndId(ex.getVariant_id().get(0).substring(21));
-                        } else if (id.length() == 32
-                                && !ex.getVariant_id().isEmpty()
-                                && ex.getVariant_id().get(0).toLowerCase().startsWith("https://d-nb.info/gnd/")) {
-                            id = EntityFacts.getGndId(ex.getVariant_id().get(0).substring(22));
-                        } else {
-                            log.warn("Could not get any GND-ID of {}. That should never happen!", id);
-                            continue;
-                        }
-
-                        counts.put(sector, counts.get(sector) + 1);
-                        writers.get(sector).append(id);
-                        writers.get(sector).append("|" + ex.getCount(sector));
-                        writers.get(sector).newLine();
-                    }
-                }
-            }
-
-            log.info("Done generating Beacon files of type {}.", type);
-
             for (SECTOR sector : sectors) {
-                writers.get(sector).close();
-                if (counts.get(sector) > 0) {
-                    final BeaconFile files_sector = new BeaconFile();
-                    files_sector.setSector(sector);
-                    files_sector.setType(type);
-                    files_sector.setCreated(date);
-                    files_sector.setCount(counts.get(sector));
-                    files_sector.setContent(byteStreams.get(sector).toByteArray());
-
-                    final List<BeaconFile> lastBeaconinDatabaseList = BeaconFileController.getBeaconFiles(type, sector, true);
-                    if (lastBeaconinDatabaseList.isEmpty() || !files_sector.equals(lastBeaconinDatabaseList.getFirst())) {
-                        log.info("Writing {} entities of {} to database. Beacon file size is {}", counts.get(sector), sector.getHumanName(), byteStreams.get(sector).size());
-                        BeaconFileController.saveBeaconFile(files_sector);
+                final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                int count = 0;
+                try (var writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(bytes), StandardCharsets.UTF_8))) {
+                    for (ResolvedEntity entity : data) {
+                        cancellation.check();
+                        final int sectorCount = entity.counts().getCount(sector);
+                        if (sectorCount > 0) {
+                            writer.append(entity.id()).append('|').append(Integer.toString(sectorCount)).append('\n');
+                            count++;
+                        }
+                    }
+                }
+                if (count > 0) {
+                    final BeaconFile file = new BeaconFile(type, sector, date, count, bytes.toByteArray());
+                    if (isChanged(file)) {
+                        changed.add(file);
                     } else {
-                        log.warn("Beacon file {}/{} generated is equal to last beacon file in database, so it was NOT written to database.", type, sector);
+                        log.info("BEACON file {}/{} is up to date.", type, sector);
                     }
                 }
             }
+            cancellation.check();
+            BeaconFileController.saveBeaconFiles(changed);
+            log.info("Saved {} new {} BEACON files.", changed.size(), type);
         } catch (IOException | JacksonException | PersistenceException ex) {
+            cancellation.check();
             log.error("Error while processing {} entity data. {}", type, ex.getMessage(), ex);
         }
 
         log.info("BEACON maker job finished.");
     }
 
-    private List<EntityCounts> getDataFromDdbApi(TYPE type) throws IOException {
+    /**
+     * Compares the generated data with the latest file for the same type and sector.
+     * A missing or unreadable previous file permits a new history entry.
+     */
+    private static boolean isChanged(BeaconFile file) {
+        final List<BeaconFile> latest = BeaconFileController.getBeaconFiles(file.getType(), file.getSector(), true);
+        if (latest.isEmpty()) {
+            return true;
+        }
+        try {
+            return !file.hasSameData(latest.getFirst());
+        } catch (IOException ex) {
+            log.warn("Could not read the previous BEACON file for {}/{}. Saving a new one.", file.getType(), file.getSector(), ex);
+            return true;
+        }
+    }
 
-        final String baseUrl = URL + SEARCH.get(type);
+    private static List<ResolvedEntity> resolveEntities(List<EntityCounts> data, SECTOR[] sectors,
+            ImportCancellation cancellation) throws InterruptedIOException {
+        final List<ResolvedEntity> resolved = new ArrayList<>(data.size());
+        for (EntityCounts entity : data) {
+            cancellation.check();
+            if (Arrays.stream(sectors).noneMatch(sector -> entity.getCount(sector) > 0)) {
+                continue;
+            }
+            final String id = resolveGndId(entity, cancellation);
+            if (id != null) {
+                resolved.add(new ResolvedEntity(id, entity));
+            } else {
+                log.warn("Could not get a GND-ID for {}.", entity.id());
+            }
+        }
+        return resolved;
+    }
 
-        final List<EntityCounts> list = new ArrayList<>();
-        String nextCursorMark = "*";
+    private static String resolveGndId(EntityCounts entity, ImportCancellation cancellation) throws InterruptedIOException {
+        final String directId = extractGndId(entity.id());
+        if (directId != null || entity.id().length() != 32 || entity.variantIds() == null) {
+            return directId;
+        }
+        for (String variant : entity.variantIds()) {
+            final String variantId = extractGndId(variant);
+            if (variantId != null) {
+                final String canonicalId = EntityFacts.getGndId(variantId, cancellation);
+                return validGndId(canonicalId) ? canonicalId : variantId;
+            }
+        }
+        return null;
+    }
 
-        while (true) {
-            final String url = baseUrl + "&cursorMark=" + URLEncoder.encode(nextCursorMark, StandardCharsets.UTF_8);
-            log.debug("Query: {}", url);
+    private static String extractGndId(String uri) {
+        if (uri != null) {
+            for (String prefix : GND_PREFIXES) {
+                if (uri.regionMatches(true, 0, prefix, 0, prefix.length())) {
+                    final String id = uri.substring(prefix.length());
+                    return validGndId(id) ? id : null;
+                }
+            }
+        }
+        return null;
+    }
 
+    private static boolean validGndId(String id) {
+        return !id.isEmpty() && id.chars().allMatch(ch -> ch >= '0' && ch <= '9' || ch == 'X' || ch == 'x' || ch == '-');
+    }
+
+    @FunctionalInterface
+    interface PageFetcher {
+        InputStream get(String url) throws IOException;
+    }
+
+    private List<EntityCounts> getDataFromDdbApi(TYPE type, ImportCancellation cancellation) throws IOException {
+        return readPages(URL + SEARCH.get(type), mapper, url -> DDBApi.httpGet(url, cancellation));
+    }
+
+    /**
+     * Reads cursor pages until the number of unique entities matches the reported total.
+     * Incomplete results are rejected so the importer cannot publish a truncated feed.
+     *
+     * @param baseUrl the search URL with query parameters, excluding the cursor
+     * @param mapper the JSON reader for DDB search results
+     * @param fetcher opens each page's body, which this method closes after reading
+     * @return the complete result in search order
+     * @throws IOException if fetching fails or the response is invalid, incomplete, or inconsistent
+     */
+    static List<EntityCounts> readPages(String baseUrl, JsonMapper mapper, PageFetcher fetcher) throws IOException {
+        final List<EntityCounts> entities = new ArrayList<>();
+        final Set<String> ids = new HashSet<>();
+        final Set<String> cursors = new HashSet<>();
+        String cursorMark = "*";
+        long expectedTotal = -1;
+        while (cursors.add(cursorMark)) {
+            final String url = baseUrl + "&cursorMark=" + URLEncoder.encode(cursorMark, StandardCharsets.UTF_8);
             final JsonNode doc;
-            try (final InputStream input = DDBApi.httpGet(url)) {
+            try (InputStream input = fetcher.get(url)) {
                 doc = mapper.readTree(input);
             }
             if (doc == null) {
-                throw new IOException("Empty DDB API response for " + type);
+                throw new IOException("Empty DDB API response");
             }
             final JsonNode cursor = doc.path("nextCursorMark");
             final JsonNode response = doc.path("response");
             final JsonNode numFound = response.path("numFound");
-            final JsonNode docsArray = response.path("docs");
-            if (!cursor.isString() || !numFound.isIntegralNumber() || !docsArray.isArray()) {
-                throw new IOException("Invalid DDB API response for " + type);
+            final JsonNode docs = response.path("docs");
+            final JsonNode partial = doc.path("responseHeader").path("partialResults");
+            if (!cursor.isString() || !numFound.isIntegralNumber() || !docs.isArray()
+                    || !partial.isMissingNode() && (!partial.isBoolean() || partial.asBoolean())) {
+                throw new IOException("Invalid or partial DDB API response");
             }
-            final String nextCursorMarkLocal = cursor.asString();
-            if (nextCursorMarkLocal.equals(nextCursorMark)) {
-                nextCursorMark = "";
-            } else {
-                nextCursorMark = nextCursorMarkLocal;
+            final long total = numFound.asLong();
+            if (total < 0) {
+                throw new IOException("Invalid DDB API result count: " + total);
             }
-            final int totalCount = numFound.asInt();
-            final List<EntityCounts> ec = Arrays.asList(mapper.treeToValue(docsArray, EntityCounts[].class));
-            list.addAll(ec);
+            if (expectedTotal != -1 && total != expectedTotal) {
+                throw new IOException("DDB API result count changed during the import: " + expectedTotal + " to " + total);
+            }
+            expectedTotal = total;
+            for (EntityCounts entity : mapper.treeToValue(docs, EntityCounts[].class)) {
+                if (entity == null || entity.id() == null || entity.id().isBlank() || !ids.add(entity.id())) {
+                    throw new IOException("Missing or repeated entity ID in DDB API results");
+                }
+                entities.add(entity);
+            }
 
-            if (list.size() % 10000 == 0) {
-                log.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), totalCount);
-            } else if (list.size() == totalCount) {
-                // last logging
-                log.info("{} data from DDBapi downloaded: {}/{}", type, list.size(), list.size());
+            if (entities.size() == total) {
+                log.info("Downloaded {} entities from DDB API.", entities.size());
+                return entities;
             }
-
-            if (nextCursorMark.isBlank() || list.size() == totalCount) {
-                break;
+            final String nextCursor = cursor.asString();
+            if (entities.size() > total || docs.isEmpty() || nextCursor.isBlank() || nextCursor.equals(cursorMark)) {
+                throw new IOException("Incomplete DDB API results: received " + entities.size() + " of " + total);
             }
+            cursorMark = nextCursor;
         }
-        log.info("Got {} GND-URIs from DDB API", list.size());
-        return list;
+        throw new IOException("DDB API cursor returned to a previously visited page");
     }
 
-    private static class EntityCounts {
+    record EntityCounts(
+            String id,
+            @JsonProperty("variant_id") List<String> variantIds,
+            int count,
+            @JsonProperty("count_sec_01") int archive,
+            @JsonProperty("count_sec_02") int library,
+            @JsonProperty("count_sec_03") int monumentProtection,
+            @JsonProperty("count_sec_04") int research,
+            @JsonProperty("count_sec_05") int media,
+            @JsonProperty("count_sec_06") int museum,
+            @JsonProperty("count_sec_07") int other) {
 
-        @Getter
-        @Setter
-        private String id;
-        @Getter
-        @Setter
-        private List<String> variant_id;
-        @Getter
-        @Setter
-        private int count;
-        @Getter
-        @Setter
-        private int count_sec_01;
-        @Getter
-        @Setter
-        private int count_sec_02;
-        @Getter
-        @Setter
-        private int count_sec_03;
-        @Getter
-        @Setter
-        private int count_sec_04;
-        @Getter
-        @Setter
-        private int count_sec_05;
-        @Getter
-        @Setter
-        private int count_sec_06;
-        @Getter
-        @Setter
-        private int count_sec_07;
-
-        // Used by Jackson during deserialization
-        @SuppressWarnings("unused")
-        public EntityCounts() {
-            this.variant_id = new ArrayList<>();
+        int getCount(SECTOR sector) {
+            return switch (sector) {
+                case ALL -> count;
+                case ARCHIVE -> archive;
+                case LIBRARY -> library;
+                case MONUMENTPROTECTION -> monumentProtection;
+                case RESEARCH -> research;
+                case MEDIA -> media;
+                case MUSEUM -> museum;
+                case OTHER -> other;
+            };
         }
+    }
 
-        @SuppressWarnings("unused")
-        public EntityCounts(String id, int count) {
-            this.id = id;
-            this.count = count;
-            this.variant_id = new ArrayList<>();
-        }
-
-        public boolean hasCount(SECTOR ct) {
-            switch (ct) {
-                case ALL -> {
-                    if (count > 0) {
-                        return true;
-                    }
-                }
-                case ARCHIVE -> {
-                    if (count_sec_01 > 0) {
-                        return true;
-                    }
-                }
-                case LIBRARY -> {
-                    if (count_sec_02 > 0) {
-                        return true;
-                    }
-                }
-                case MONUMENTPROTECTION -> {
-                    if (count_sec_03 > 0) {
-                        return true;
-                    }
-                }
-                case RESEARCH -> {
-                    if (count_sec_04 > 0) {
-                        return true;
-                    }
-                }
-                case MEDIA -> {
-                    if (count_sec_05 > 0) {
-                        return true;
-                    }
-                }
-                case MUSEUM -> {
-                    if (count_sec_06 > 0) {
-                        return true;
-                    }
-                }
-                case OTHER -> {
-                    if (count_sec_07 > 0) {
-                        return true;
-                    }
-                }
-                default -> {
-                }
-            }
-
-            return false;
-        }
-
-        public int getCount(SECTOR ct) {
-            switch (ct) {
-                case ALL -> {
-                    return count;
-                }
-                case ARCHIVE -> {
-                    return count_sec_01;
-                }
-                case LIBRARY -> {
-                    return count_sec_02;
-                }
-                case MONUMENTPROTECTION -> {
-                    return count_sec_03;
-                }
-                case RESEARCH -> {
-                    return count_sec_04;
-                }
-                case MEDIA -> {
-                    return count_sec_05;
-                }
-                case MUSEUM -> {
-                    return count_sec_06;
-                }
-                case OTHER -> {
-                    return count_sec_07;
-                }
-                default -> {
-                    return 0;
-                }
-            }
-        }
+    private record ResolvedEntity(String id, EntityCounts counts) {
     }
 }

@@ -22,44 +22,80 @@ import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 /**
+ * Loads the application's UTF-8 properties on first use.
+ * The {@code beagen.dev} system property selects {@code beagen.dev.cfg}
+ * when true. Otherwise, properties are loaded from {@code beagen.cfg}.
  *
  * @author Michael Büchner
  */
-public class Configuration {
+public final class Configuration {
 
     private static final String PROPERTY_FILE = "/beagen.cfg";
     private static final String PROPERTY_FILE_DEV = "/beagen.dev.cfg";
-    private static Configuration instance;
-    private final Properties properties = new Properties();
+    private static final Object LOAD_LOCK = new Object();
+    private static Properties properties;
 
-    private Configuration() throws IOException {
+    private Configuration() {
+    }
+
+    private static Properties loadProperties() throws IOException {
         final String propertyFile = Boolean.getBoolean("beagen.dev") ? PROPERTY_FILE_DEV : PROPERTY_FILE;
         final InputStream resource = Configuration.class.getResourceAsStream(propertyFile);
         if (resource == null) {
             throw new IOException("Configuration resource not found: " + propertyFile);
         }
+        final Properties loaded = new Properties();
         try (final InputStreamReader reader = new InputStreamReader(resource, StandardCharsets.UTF_8)) {
-            properties.load(reader);
+            loaded.load(reader);
         }
         System.out.println("Configuration loaded from " + propertyFile);
+        return loaded;
     }
 
-    public static synchronized Configuration get() throws IOException {
-        if (instance == null) {
-            instance = new Configuration();
+    private static Properties properties() throws IOException {
+        synchronized (LOAD_LOCK) {
+            if (properties == null) {
+                properties = loadProperties();
+            }
+            return properties;
         }
-        return instance;
     }
 
-    public String[] getValueAsArray(String key, String split) {
-        return properties.getProperty(key).split(split);
+    /**
+     * Splits a required property, such as a multi-line BEACON header, into parts.
+     *
+     * @param key the property name
+     * @param split the regular expression used as the separator
+     * @return the parts in their original order
+     * @throws IOException if the configuration cannot be loaded or the key is missing
+     */
+    public static String[] getValueAsArray(String key, String split) throws IOException {
+        final String value = getValue(key);
+        if (value == null) {
+            throw new IOException("Missing configuration property: " + key);
+        }
+        return value.split(split);
     }
 
-    public String getValue(String key) {
-        return properties.getProperty(key);
+    /**
+     * Reads the effective value of a property, including any in-memory override.
+     *
+     * @param key the property name
+     * @return the property value, or {@code null} if the key is absent
+     * @throws IOException if the configuration cannot be loaded
+     */
+    public static String getValue(String key) throws IOException {
+        return properties().getProperty(key);
     }
 
-    public void setValue(String key, String value) {
-        properties.setProperty(key, value);
+    /**
+     * Adds or replaces a property for subsequent reads in this process.
+     *
+     * @param key the property name
+     * @param value the new property value
+     * @throws IOException if the configuration cannot be loaded
+     */
+    public static void setValue(String key, String value) throws IOException {
+        properties().setProperty(key, value);
     }
 }

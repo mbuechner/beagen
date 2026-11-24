@@ -35,6 +35,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
+/**
+ * Serves the static HTML shell and caches serialized JSON metadata by list selection.
+ * Lists expire after a short interval or when Beagen saves or deletes entries. Large
+ * responses are served normally and evicted to limit retained memory.
+ */
 final class ResponseCache {
 
     private static final long LIST_TTL_NANOS = Duration.ofMinutes(1).toNanos();
@@ -91,6 +96,7 @@ final class ResponseCache {
         }
 
         private void send(Context ctx, String contentType) {
+            // Clients may store the body but must revalidate it on each request.
             ctx.header(Header.CACHE_CONTROL, "no-cache");
             ctx.header(Header.ETAG, etag);
             final var ifNoneMatch = ctx.req().getHeaders(Header.IF_NONE_MATCH);
@@ -117,6 +123,7 @@ final class ResponseCache {
 
         private static String weakEtag(byte[] body) {
             try {
+                // A weak validator identifies the same content across compression variants.
                 final byte[] digest = MessageDigest.getInstance("SHA-256").digest(body);
                 return "W/\"" + HexFormat.of().formatHex(digest) + "\"";
             } catch (NoSuchAlgorithmException e) {

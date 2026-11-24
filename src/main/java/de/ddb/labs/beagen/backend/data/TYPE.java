@@ -20,12 +20,17 @@ import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueSerializer;
 
 /**
+ * Entity types supported by the import and BEACON history API.
+ * The enum names identify types in the database and in API filters.
  *
  * @author Michael Büchner
  */
 public enum TYPE {
+    /** Organisations and other corporate bodies. */
     ORGANISATION("Organisation"),
+    /** Persons. */
     PERSON("Person"),
+    /** Newspaper titles with digitized issues. */
     NEWSPAPER("Newspaper");
 
     private final String name;
@@ -34,12 +39,18 @@ public enum TYPE {
         this.name = name;
     }
 
+    /**
+     * Returns the display label used in JSON history responses.
+     *
+     * @return the human-readable label
+     */
     public String getName() {
         return name;
     }
 
     /**
-     * Json Serializer for output over API
+     * Serializes an entity type as a vocabulary identifier and display label in the history API.
+     * The response uses the display label for both the {@code abbr} and {@code name} properties.
      */
     public static class TypeSerializer extends ValueSerializer<TYPE> {
 

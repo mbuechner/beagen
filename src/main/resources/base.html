@@ -7,20 +7,15 @@
     <meta name="description" content="Beagen – BEACON-Datei-Generator der Deutschen Digitalen Bibliothek">
     <meta name="theme-color" content="#0d6efd">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/spacelab/bootstrap.min.css" integrity="sha256-DJuTtrnkM7UA6ptLT9fJumXkYY5NovkL55ITeigpSsI=" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.28.0/dist/bootstrap-table.min.css" integrity="sha256-HlZlGwq+Copn/J1FrKC1Vm7s5M2wvEjCYvPvP4rHhMs=" crossorigin="anonymous">
     <title>Beagen - Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</title>
   </head>
   <body>
-    <div class="container mt-2">
+    <main class="container mt-2">
       <div class="bg-light mb-4 rounded-2 p-5 mt-3">
-        <h1 class="display-4">
-          <a href="#" title="${project.name} v${project.version}" style="text-decoration: none">${project.name}</a>
-        </h1>
+        <h1 class="display-4" title="${project.name} v${project.version}">${project.name}</h1>
         <p class="lead">Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</p>
         <hr class="my-4">
-        <div id="alert_placeholder" aria-live="polite"></div>
+        <div id="alert_placeholder"></div>
         <div class="row">
           <div class="col-md-4">
             <label class="col-form-label" for="selectType">Typ</label>
@@ -44,7 +39,7 @@
             </select>
           </div>
           <div class="col-md-4 align-self-end">
-            <a class="btn btn-primary mt-3" href="" id="showBtn" role="button" aria-label="Auswahl anzeigen">Anzeigen</a>
+            <a class="btn btn-primary mt-3" id="showBtn">Anzeigen</a>
           </div>
           <div class="col-md-12 mt-2">
             <div class="form-check form-switch">
@@ -54,155 +49,230 @@
           </div>
         </div>
         <br>
-        <p id="message"></p>
-        <div class="row d-none" id="beaconTableRow">
+        <p id="listStatus" role="status"></p>
+        <div class="row" id="beaconTableRow" hidden>
           <div class="table-responsive">
-            <table class="table table-hover table-striped" data-locale="de-DE" id="beaconTable" aria-label="Beacon-Dateien">
+            <table class="table table-hover table-striped" id="beaconTable" aria-label="BEACON-Dateien">
               <thead>
                 <tr>
-                  <th data-field="type.name" data-sortable="true" scope="col">Typ</th>
-                  <th data-field="sector.name" data-sortable="true" scope="col">Kultursparte</th>
-                  <th data-field="created" data-sortable="true" scope="col">Erstellungsdatum</th>
-                  <th data-field="count" data-sortable="true" scope="col">Anzahl</th>
-                  <th data-field="@id" data-formatter="linkFormatter" data-sortable="true" scope="col">Direktlink</th>
+                  <th scope="col"><button class="btn btn-link p-0 text-reset text-start" type="button">Typ <span aria-hidden="true"></span></button></th>
+                  <th scope="col"><button class="btn btn-link p-0 text-reset text-start" type="button">Kultursparte <span aria-hidden="true"></span></button></th>
+                  <th scope="col"><button class="btn btn-link p-0 text-reset text-start" type="button">Erstellungsdatum <span aria-hidden="true"></span></button></th>
+                  <th scope="col"><button class="btn btn-link p-0 text-reset text-start" type="button">Anzahl <span aria-hidden="true"></span></button></th>
+                  <th scope="col"><button class="btn btn-link p-0 text-reset text-start" type="button">Direktlink <span aria-hidden="true"></span></button></th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
         </div>
-        <div class="row d-none" id="chartRow">
-          <div class="col-12 mt-4" style="float: none; margin: 0 auto">
+        <div class="row" id="chartRow" hidden>
+          <div class="col-12 mt-4">
             <div class="card card-body">
-              <canvas class="chartjs" id="beaconChart"></canvas>
+              <canvas id="beaconChart" role="img" aria-label="Verlauf der Anzahl in der ausgewählten BEACON-Datei"></canvas>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <script defer src="https://code.jquery.com/jquery-4.1.0.min.js" integrity="sha256-hjRvPkFLO1JGZFMXGrzdpG6TlsHDyjp4PQeqLWRcMzk=" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/js/bootstrap.min.js" integrity="sha256-rs98T2QguTYrysS3I/ILYXg1ufLcWwex6VpjAA4s62w=" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js" integrity="sha256-hzZMwrKnamaEkp59a4Cxiol3lNs4QAyv8fzxeRxpJdI=" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.28.0/dist/bootstrap-table.min.js" integrity="sha256-Fjkla0TtUKhsYZ9ug6FV3yk7j60NSIiBLdR2RoCoIH8=" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.28.0/dist/locale/bootstrap-table-de-DE.min.js" integrity="sha256-szvrzKPc14Bv5Du8qTgchg6QReCeFKObNJ1tH8t6UU8=" crossorigin="anonymous"></script>
+    </main>
+    <template id="optionalAssets">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/spacelab/bootstrap.min.css" integrity="sha256-DJuTtrnkM7UA6ptLT9fJumXkYY5NovkL55ITeigpSsI=" crossorigin="anonymous">
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.2/dist/chart.umd.min.js" integrity="sha256-PyiPTyaILCa1iTH7WGqbTzA3C13jjWncAFsL0FsI4RM=" crossorigin="anonymous"></script>
+    </template>
     <script>
-      // Ensure inline code runs after deferred libraries load
-      document.addEventListener('DOMContentLoaded', function () {
-        // Expose formatter globally for bootstrap-table's data-formatter lookup
-        window.linkFormatter = function (value, row, index) {
-          const v = String(value || '').trim();
-          const href = encodeURI(v);
-          return '<a href="' + href + '" rel="noopener">' + v + "</a>";
-        };
-        const getUrlParameter = function getUrlParameter(sParam) {
-          let sPageURL = window.location.search.substring(1);
-          let sURLVariables = sPageURL.split("&");
-          for (let i = 0; i < sURLVariables.length; i = i + 1) {
-            let sParameterName = sURLVariables[i].split("=");
-            if (sParameterName[0] === sParam) {
-              return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+      (() => {
+        const currentUrl = new URL(window.location.href);
+        // Match the route suffix so switching views preserves a reverse proxy's path prefix.
+        const listPath = currentUrl.pathname.replace(/\/list(?:\/latest)?\/?$/, "/list");
+        const latest = /\/latest\/?$/.test(currentUrl.pathname);
+        const type = document.getElementById("selectType");
+        const sector = document.getElementById("selectSector");
+        const latestOnly = document.getElementById("selectorAll");
+        const showButton = document.getElementById("showBtn");
+        const status = document.getElementById("listStatus");
+        const table = document.getElementById("beaconTable");
+        const optionalAssets = document.getElementById("optionalAssets").content;
+        const sortButtons = Array.from(table.querySelectorAll("thead button"));
+        const columns = [
+          entry => entry.type?.name ?? "",
+          entry => entry.sector?.name ?? "",
+          entry => entry.created ?? "",
+          entry => entry.count ?? "",
+          entry => entry["@id"] ?? "",
+        ];
+        const collator = new Intl.Collator("de", { numeric: true });
+        let sortColumn = 2;
+        let descending = true;
+        let entries = [];
+
+        function makeLink(value) {
+          const text = String(value ?? "").trim();
+          if (text) {
+            try {
+              const url = new URL(text, document.baseURI);
+              if (url.protocol === "http:" || url.protocol === "https:") {
+                const link = document.createElement("a");
+                link.href = url.href;
+                link.textContent = text;
+                return link;
+              }
+            } catch {
+              // Display an invalid URL as text.
             }
           }
-        };
-        const bootstrap_alert = function (message, link) {
-          let html = '<div class="alert alert-primary alert-dismissible fade show" role="alert">' + message;
-          if (typeof link !== "undefined") {
-            html += '<a class="alert-link" href="' + link + '">' + link + "</a>";
+          return document.createTextNode(text);
+        }
+
+        function showAlert(message, link) {
+          const alert = document.createElement("div");
+          alert.className = link ? "alert alert-primary" : "alert alert-danger";
+          alert.setAttribute("role", link ? "status" : "alert");
+          alert.append(message);
+          if (link) {
+            alert.append(" ", makeLink(link));
           }
-          html += '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schliessen"></button></div>';
-          $("#alert_placeholder").html(html);
-        };
-        $("#selectSector, #selectType, #selectorAll").change(function () {
-          let typ = "type=" + ($("#selectType").val() ? $("#selectType").val() : $("#selectType option:first").val());
-          let sec = "sector=" + ($("#selectSector").val() ? $("#selectSector").val() : $("#selectSector option:first").val());
-          let que = typ + (typ && sec ? "&" + sec : sec);
-          let url = $(location).attr("href").split("?")[0];
-          url = url.substring(url.length - 1) === "/" ? url.substring(0, url.length - 1) : url;
-          url = url.endsWith("/latest") ? url.substring(0, url.length - 7) : url;
-          url = url.endsWith("/list") ? url : url + "/list";
-          url = url + ($("#selectorAll").prop("checked") === true ? "/latest" : "");
-          $("#showBtn").attr("href", url + "?" + que);
-          if (typ === "type=newspaper") {
-            $("#selectSector").attr("disabled", "disabled");
-            $("#selectSector").val("all");
-          } else {
-            $("#selectSector").removeAttr("disabled");
-          }
-        });
-        $("#showBtn").click(function () {
-          $("#selectSector").trigger("change");
-        });
-        $(document).ready(function () {
-          $("#selectSector").val(getUrlParameter("sector") ? getUrlParameter("sector") : "all");
-          $("#selectType").val(getUrlParameter("type") ? getUrlParameter("type") : "organisation");
-          if (getUrlParameter("type") === "newspaper") {
-            $("#selectSector").prop("disabled", true);
-          } else {
-            $("#selectSector").prop("disabled", false);
-          }
-          const url = $(location).attr("href");
-          let endIndex = url.indexOf("?") === -1 ? url.length : url.indexOf("?");
-          let url_parts = url
-            .substring(0, endIndex)
-            .split("/")
-            .filter(function (str) {
-              return str !== "";
-            });
-          if (url_parts[url_parts.length - 1] === "latest") {
-            $("#selectorAll").prop("checked", true);
-            if ($("#selectSector").val() && $("#selectType").val() && $("#selectType").val() !== "all") {
-              var baseUrl = $(location).attr("href").substring(0, $(location).attr("href").indexOf("list/"));
-              bootstrap_alert("Für die Auswahl gib es einen <strong>symbolischen Link</strong>, der immer " + " direkt auf die aktuellste Beacon-Datei führt: ", baseUrl + "item/" + $("#selectType").val() + "/" + $("#selectSector").val() + "/latest");
-            }
-          } else {
-            $("#selectorAll").prop("checked", false);
-          }
-          $.getJSON(url, function (data) {
-            $("#beaconTableRow").removeClass("d-none");
-            $("#beaconTable").bootstrapTable({
-              data: data,
-            });
-            if ($("#selectorAll").prop("checked") === false) {
-              let chartDataLabel = [];
-              let chartDataCount = [];
-              $.each(data, function (key1, value1) {
-                let count = "";
-                let created = "";
-                $.each(value1, function (key2, value2) {
-                  if (key2 === "created") {
-                    created = value2.indexOf("T") === -1 ? value2 : value2.substring(0, value2.indexOf("T"));
-                  } else if (key2 === "count") {
-                    count = value2;
-                  }
-                });
-                chartDataLabel.unshift(created);
-                chartDataCount.unshift(count);
-              });
-              let datasetObj = {};
-              datasetObj.label = "Entwicklung der Anzahl";
-              datasetObj.data = chartDataCount;
-              let chartData = {};
-              chartData.labels = chartDataLabel;
-              chartData.datasets = [datasetObj];
-              $("#chartRow").removeClass("d-none");
-              new Chart($("#beaconChart")[0].getContext("2d"), {
-                  type: "line",
-                  data: chartData,
-                  options: {
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                      },
-                    },
-                  },
-                });
-            }
-          }).fail(function (data) {
-            bootstrap_alert("<strong>Fehler " + data.status + "</strong>, " + data.statusText + " :-(<br>" + JSON.parse(data.responseText).title);
+          const closeButton = document.createElement("button");
+          closeButton.type = "button";
+          closeButton.className = "btn btn-sm btn-outline-secondary";
+          closeButton.textContent = "Schließen";
+          closeButton.addEventListener("click", () => {
+            alert.remove();
+            showButton.focus();
           });
-        });
-      });
+          alert.append(" ", closeButton);
+          document.getElementById("alert_placeholder").replaceChildren(alert);
+        }
+
+        function updateFilter() {
+          // Newspaper feeds always use the aggregate sector.
+          sector.disabled = type.value === "newspaper";
+          if (sector.disabled) {
+            sector.value = "all";
+          }
+          const url = new URL(currentUrl.origin);
+          url.pathname = listPath + (latestOnly.checked ? "/latest" : "");
+          url.search = new URLSearchParams({ type: type.value, sector: sector.value });
+          showButton.href = url.href;
+        }
+
+        for (const [name, select] of [["type", type], ["sector", sector]]) {
+          select.value = (currentUrl.searchParams.get(name) ?? "").toLowerCase();
+          if (!select.value) {
+            select.selectedIndex = 0;
+          }
+          select.addEventListener("change", updateFilter);
+        }
+        latestOnly.checked = latest;
+        latestOnly.addEventListener("change", updateFilter);
+        updateFilter();
+
+        if (latest) {
+          const latestUrl = new URL(currentUrl.origin);
+          latestUrl.pathname = listPath.slice(0, -"/list".length) + "/item/" + type.value + "/" + sector.value + "/latest";
+          showAlert("Direktlink zur aktuellsten BEACON-Datei.", latestUrl.href);
+        }
+
+        function renderTable() {
+          document.getElementById("beaconTableRow").hidden = false;
+          const body = table.tBodies[0];
+          body.replaceChildren();
+          for (const [index, button] of sortButtons.entries()) {
+            const heading = button.closest("th");
+            const indicator = button.querySelector("span");
+            if (index === sortColumn) {
+              heading.setAttribute("aria-sort", descending ? "descending" : "ascending");
+              indicator.textContent = descending ? "↓" : "↑";
+            } else {
+              heading.removeAttribute("aria-sort");
+              indicator.textContent = "↕";
+            }
+          }
+          if (!entries.length) {
+            const cell = body.insertRow().insertCell();
+            cell.colSpan = columns.length;
+            cell.textContent = "Keine Einträge gefunden.";
+            return;
+          }
+          const value = columns[sortColumn];
+          const sorted = entries.slice().sort((left, right) => {
+            const a = value(left);
+            const b = value(right);
+            const comparison = typeof a === "number" && typeof b === "number" ? a - b : collator.compare(a, b);
+            return descending ? -comparison : comparison;
+          });
+          for (const entry of sorted) {
+            const row = body.insertRow();
+            for (const column of columns.slice(0, -1)) {
+              row.insertCell().textContent = column(entry);
+            }
+            row.insertCell().append(makeLink(entry["@id"]));
+          }
+        }
+        for (const [index, button] of sortButtons.entries()) {
+          button.addEventListener("click", () => {
+            descending = sortColumn === index && !descending;
+            sortColumn = index;
+            renderTable();
+          });
+        }
+
+        function loadChart() {
+          const source = optionalAssets.querySelector("script");
+          const script = document.createElement("script");
+          script.src = source.src;
+          script.integrity = source.integrity;
+          script.crossOrigin = source.crossOrigin;
+          script.addEventListener("load", () => {
+            // The API returns newest first. Keep chart dates chronological regardless of table sorting.
+            const history = entries.slice().reverse();
+            const chartRow = document.getElementById("chartRow");
+            chartRow.hidden = false;
+            try {
+              new window.Chart(document.getElementById("beaconChart"), {
+                type: "line",
+                data: {
+                  labels: history.map(entry => entry.created.split("T")[0]),
+                  datasets: [{ label: "Entwicklung der Anzahl", data: history.map(entry => entry.count) }],
+                },
+                options: { scales: { y: { beginAtZero: true } } },
+              });
+            } catch (error) {
+              chartRow.hidden = true;
+              console.warn("Das Verlaufsdiagramm konnte nicht angezeigt werden.", error);
+            }
+          }, { once: true });
+          document.head.append(script);
+        }
+
+        async function loadEntries() {
+          status.textContent = "BEACON-Dateien werden geladen.";
+          try {
+            // The same URL serves the browser page and the JSON data through content negotiation.
+            const response = await fetch(showButton.href, { headers: { Accept: "application/json" } });
+            if (!response.ok) {
+              const error = await response.json().catch(() => null);
+              throw new Error(error?.title ?? "HTTP " + response.status);
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+              throw new Error("Ungültige Antwort des Servers.");
+            }
+            entries = data;
+            renderTable();
+            if (!latest && entries.length) {
+              loadChart();
+            }
+          } catch (error) {
+            showAlert("Die BEACON-Dateien konnten nicht geladen werden. " + error.message);
+          } finally {
+            status.textContent = "";
+            // Load the optional theme after rendering so CDN latency cannot delay the table.
+            document.head.append(optionalAssets.querySelector("link").cloneNode(true));
+          }
+        }
+
+        loadEntries();
+      })();
     </script>
   </body>
 </html>

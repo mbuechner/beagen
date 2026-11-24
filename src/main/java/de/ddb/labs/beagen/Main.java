@@ -19,6 +19,7 @@ import de.ddb.labs.beagen.backend.BeaconFile;
 import de.ddb.labs.beagen.backend.BeaconFileController;
 import de.ddb.labs.beagen.backend.helper.Configuration;
 import de.ddb.labs.beagen.backend.helper.EntityManagerUtil;
+import de.ddb.labs.beagen.backend.helper.ImportCancellation;
 import de.ddb.labs.beagen.backend.jobs.BeaconJob;
 import de.ddb.labs.beagen.backend.data.SECTOR;
 import de.ddb.labs.beagen.backend.data.TYPE;
@@ -31,9 +32,12 @@ import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Header;
 import io.javalin.http.HttpStatus;
+import io.javalin.http.NotAcceptableResponse;
 import io.javalin.http.NotFoundResponse;
 import io.javalin.json.JavalinJackson3;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -43,6 +47,9 @@ import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
 
 /**
+ * Starts Beagen's Javalin server and schedules BEACON imports with Quartz.
+ * The server serves HTML and JSON history and exposes individual and latest
+ * BEACON downloads under the configured URL prefix.
  *
  * @author Michael Büchner
  */
@@ -54,82 +61,107 @@ public class Main {
     private static final String BEAGEN_PORT = "beagen.port";
     private static final String BEAGEN_PATHPREFIX = "beagen.pathprefix";
     private static final String BEAGEN_CRON = "beagen.cron";
-    // Job Scheduler
-    private static Scheduler quartzScheduler;
 
     /**
-     * Main entry point which starts a local http server listening on port 80.
+     * Applies environment overrides, starts the application, and registers its shutdown hook.
      *
-     * @param args
-     * @throws Exception
+     * @param args command-line arguments reserved for the Java entry point
+     * @throws Exception if the configuration cannot be loaded or the application cannot start
      */
     public static void main(String[] args) throws Exception {
+        for (String key : List.of(BEAGEN_DATABASE, BEAGEN_BASEURL, BEAGEN_PATHPREFIX, BEAGEN_PORT, BEAGEN_CRON)) {
+            final String override = System.getenv(key);
+            if (override != null) {
+                Configuration.setValue(key, override);
+            }
+        }
+        final Javalin app = start();
+        Runtime.getRuntime().addShutdownHook(new Thread(app::stop, "beagen-shutdown"));
+    }
 
-        // set System properties for pathes
-        // get env and overwrite default configuration
-        if (System.getenv(BEAGEN_DATABASE) != null) {
-            System.setProperty(BEAGEN_DATABASE, System.getenv(BEAGEN_DATABASE));
-            Configuration.get().setValue(BEAGEN_DATABASE, System.getenv(BEAGEN_DATABASE));
-        } else {
-            System.setProperty(BEAGEN_DATABASE, Configuration.get().getValue(BEAGEN_DATABASE));
-        }
-        if (System.getenv(BEAGEN_BASEURL) != null) {
-            Configuration.get().setValue(BEAGEN_BASEURL, System.getenv(BEAGEN_BASEURL));
-        }
-        if (System.getenv(BEAGEN_PATHPREFIX) != null) {
-            Configuration.get().setValue(BEAGEN_PATHPREFIX, System.getenv(BEAGEN_PATHPREFIX));
-        }
-        if (System.getenv(BEAGEN_PORT) != null) {
-            Configuration.get().setValue(BEAGEN_PORT, System.getenv(BEAGEN_PORT));
-        }
-        if (System.getenv(BEAGEN_CRON) != null) {
-            Configuration.get().setValue(BEAGEN_CRON, System.getenv(BEAGEN_CRON));
-        }
+    /**
+     * Initializes persistence and cleans up empty historical files before serving requests.
+     * The import schedule is enabled once Javalin has started. Shutdown cancels and joins the active import
+     * before closing persistence. Callers that start the server directly own its lifecycle.
+     *
+     * @return the running server
+     * @throws Exception if a startup step fails, with any cleanup failures suppressed
+     */
+    static Javalin start() throws Exception {
+        final String database = Configuration.getValue(BEAGEN_DATABASE);
+        System.setProperty(BEAGEN_DATABASE, database);
 
-        System.out.println(BEAGEN_DATABASE + "=" + Configuration.get().getValue(BEAGEN_DATABASE));
-        System.out.println(BEAGEN_BASEURL + "=" + Configuration.get().getValue(BEAGEN_BASEURL));
-        System.out.println(BEAGEN_PATHPREFIX + "=" + Configuration.get().getValue(BEAGEN_PATHPREFIX));
-        System.out.println(BEAGEN_PORT + "=" + Configuration.get().getValue(BEAGEN_PORT));
-        System.out.println(BEAGEN_CRON + "=" + Configuration.get().getValue(BEAGEN_CRON));
+        final int port = Integer.parseInt(Configuration.getValue(BEAGEN_PORT));
+        final String pathPrefix = Configuration.getValue(BEAGEN_PATHPREFIX);
+        final String cron = Configuration.getValue(BEAGEN_CRON);
+        final var schedule = CronScheduleBuilder.cronSchedule(cron);
 
-        final ResponseCache responseCache = new ResponseCache();
+        System.out.println(BEAGEN_DATABASE + "=" + database.split(";", 2)[0]);
+        System.out.println(BEAGEN_BASEURL + "=" + Configuration.getValue(BEAGEN_BASEURL));
+        System.out.println(BEAGEN_PATHPREFIX + "=" + pathPrefix);
+        System.out.println(BEAGEN_PORT + "=" + port);
+        System.out.println(BEAGEN_CRON + "=" + cron);
 
-        // start update job
         final JobDetail job = JobBuilder.newJob(BeaconJob.class)
                 .withIdentity("cronjob", "crongroup")
                 .build();
-
         final Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity("crontrigger", "crongroup")
                 .startNow()
-                .withSchedule(CronScheduleBuilder.cronSchedule(Configuration.get().getValue(BEAGEN_CRON)))
+                .withSchedule(schedule)
                 .build();
 
-        quartzScheduler = StdSchedulerFactory.getDefaultScheduler();
-        quartzScheduler.start();
-        quartzScheduler.scheduleJob(job, trigger);
-
-        // start javalin server
-        final int port = Integer.parseInt(Configuration.get().getValue(BEAGEN_PORT));
-        final String pathPrefix = Configuration.get().getValue(BEAGEN_PATHPREFIX);
-        Javalin.start(config -> {
-            config.jetty.port = port;
-            config.jsonMapper(new JavalinJackson3().updateMapper(builder -> builder.configureForJackson2()));
-            config.http.generateEtags = true;
-            // Enable Brotli and GZIP compression with moderate levels
-            config.http.compressionStrategy = new CompressionStrategy(new Brotli(4), new Gzip(6));
-            config.bundledPlugins.enableCors(cors -> {
-                cors.addRule(it -> {
-                    it.anyHost();
+        final ResponseCache responseCache = new ResponseCache();
+        final EntityManagerUtil entityManagerUtil = EntityManagerUtil.initialize();
+        final ImportCancellation cancellation = new ImportCancellation();
+        Scheduler scheduler = null;
+        Javalin app = null;
+        try {
+            scheduler = StdSchedulerFactory.getDefaultScheduler();
+            scheduler.getContext().put(BeaconJob.CANCELLATION_KEY, cancellation);
+            scheduler.scheduleJob(job, trigger);
+            final Scheduler jobScheduler = scheduler;
+            app = Javalin.create(config -> {
+                config.jetty.port = port;
+                config.jsonMapper(new JavalinJackson3().updateMapper(builder -> builder.configureForJackson2()));
+                config.http.generateEtags = true;
+                config.http.compressionStrategy = new CompressionStrategy(new Brotli(4), new Gzip(6));
+                config.bundledPlugins.enableCors(cors -> cors.addRule(rule -> rule.anyHost()));
+                config.events.serverStopping(() -> {
+                    cancellation.cancel();
+                    jobScheduler.shutdown(true);
                 });
+                config.events.serverStopped(entityManagerUtil::shutdown);
+                config.events.serverStopFailed(entityManagerUtil::shutdown);
+                registerRoutes(config.routes, pathPrefix, responseCache);
             });
-            config.events.serverStarting(() -> EntityManagerUtil.getInstance());
-            config.events.serverStarted(() -> Thread.ofVirtual()
-                    .name("beagen-empty-file-cleanup")
-                    .start(BeaconFileController::deleteEmptyBeaconFiles));
-            config.events.serverStopped(() -> EntityManagerUtil.getInstance().shutdown());
-            registerRoutes(config.routes, pathPrefix, responseCache);
-        });
+            BeaconFileController.deleteEmptyBeaconFiles();
+            app.start();
+            scheduler.start();
+            return app;
+        } catch (Exception startupFailure) {
+            cancellation.cancel();
+            try {
+                if (app != null) {
+                    app.stop();
+                }
+            } catch (Exception cleanupFailure) {
+                startupFailure.addSuppressed(cleanupFailure);
+            }
+            try {
+                if (scheduler != null && !scheduler.isShutdown()) {
+                    scheduler.shutdown(true);
+                }
+            } catch (Exception cleanupFailure) {
+                startupFailure.addSuppressed(cleanupFailure);
+            }
+            try {
+                entityManagerUtil.shutdown();
+            } catch (RuntimeException cleanupFailure) {
+                startupFailure.addSuppressed(cleanupFailure);
+            }
+            throw startupFailure;
+        }
     }
 
     private static void registerRoutes(RoutesConfig routes, String pathPrefix, ResponseCache responseCache) {
@@ -137,34 +169,31 @@ public class Main {
         routes.before(ctx -> ctx.res().setCharacterEncoding("UTF-8"));
 
         routes.get(pathPrefix + "/item/{id}", ctx -> {
-            final Long id = Long.valueOf(ctx.pathParam("id"));
+            final long id;
+            try {
+                id = Long.parseLong(ctx.pathParam("id"));
+            } catch (NumberFormatException e) {
+                throw new BadRequestResponse("Keine gültige BEACON-ID");
+            }
+            if (id <= 0) {
+                throw new BadRequestResponse("Keine gültige BEACON-ID");
+            }
             final BeaconFile bfile = BeaconFileController.getBeaconFile(id);
             if (bfile == null) {
                 throw new NotFoundResponse("Beacon-Datei " + id + " nicht gefunden");
             }
-            ctx.result(bfile.getBeaconFile());
+            ctx.contentType("text/plain; charset=utf-8").result(bfile.getBeaconFile());
         });
 
         routes.get(pathPrefix + "/item/{type}/{sector}/latest", ctx -> {
 
-            TYPE type;
-            try {
-                type = TYPE.valueOf(ctx.pathParam("type").toUpperCase());
-            } catch (Exception e) {
-                throw new BadRequestResponse("Kein gültiger Typ");
-            }
-
-            SECTOR sector;
-            try {
-                sector = SECTOR.valueOf(ctx.pathParam("sector").toUpperCase());
-            } catch (Exception e) {
-                throw new BadRequestResponse("Keine gültige Kultursparte");
-            }
+            final TYPE type = parseEnum(TYPE.class, ctx.pathParam("type"), "Kein gültiger Typ");
+            final SECTOR sector = parseEnum(SECTOR.class, ctx.pathParam("sector"), "Keine gültige Kultursparte");
 
             final List<BeaconFile> bfileList = BeaconFileController.getBeaconFiles(type, sector, true);
             if (!bfileList.isEmpty()) {
                 final BeaconFile bfile = bfileList.get(0);
-                ctx.result(bfile.getBeaconFile());
+                ctx.contentType("text/plain; charset=utf-8").result(bfile.getBeaconFile());
             } else {
                 throw new NotFoundResponse("Keine Beacon-Datei gefunden");
             }
@@ -179,60 +208,88 @@ public class Main {
     }
 
     private static void deliver(Context ctx, boolean latest, ResponseCache responseCache) {
+        // HTML and JSON share the URL, and either response can be compressed.
         ctx.addHeader(Header.VARY, Header.ACCEPT);
         ctx.addHeader(Header.VARY, Header.ACCEPT_ENCODING);
-        if (deliverHtml(ctx.header(Header.ACCEPT))) {
+        final var accepted = Collections.list(ctx.req().getHeaders(Header.ACCEPT));
+        if (deliverHtml(accepted.isEmpty() ? null : String.join(",", accepted))) {
             responseCache.serveHtml(ctx);
             return;
         }
 
-        TYPE type = null;
-        try {
-            final String t = ctx.queryParam("type") == null ? "organisation" : ctx.queryParam("type");
-            if (t == null) {
-                throw new IllegalArgumentException();
-            }
-            type = TYPE.valueOf(t.toUpperCase());
-        } catch (Exception e) {
-            throw new BadRequestResponse("Kein gültiger Typ");
-        }
-
-        SECTOR sector = null;
-        try {
-            final String s = ctx.queryParam("sector") == null ? "all" : ctx.queryParam("sector");
-            if (s == null) {
-                throw new IllegalArgumentException();
-            }
-            sector = SECTOR.valueOf(s.toUpperCase());
-        } catch (Exception e) {
-            throw new BadRequestResponse("Keine gültige Kultursparte");
-        }
+        final String requestedType = ctx.queryParam("type");
+        final String requestedSector = ctx.queryParam("sector");
+        final TYPE type = requestedType == null ? TYPE.ORGANISATION
+                : parseEnum(TYPE.class, requestedType, "Kein gültiger Typ");
+        final SECTOR sector = requestedSector == null ? SECTOR.ALL
+                : parseEnum(SECTOR.class, requestedSector, "Keine gültige Kultursparte");
 
         responseCache.serveList(ctx, type, sector, latest);
     }
 
+    private static <E extends Enum<E>> E parseEnum(Class<E> enumClass, String value, String errorMessage) {
+        try {
+            return Enum.valueOf(enumClass, value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestResponse(errorMessage);
+        }
+    }
+
+    /**
+     * Assigns each representation the quality of its most specific matching range,
+     * then compares quality, specificity, and header order. A missing header selects
+     * HTML, while an otherwise exact tie selects JSON for generic API clients.
+     */
     private static boolean deliverHtml(String accept) {
         if (accept == null) {
             return true;
         }
-        accept = accept.substring(0, accept.indexOf(';') == -1 ? accept.length() : accept.indexOf(';'));
-        final String[] mimeTypes = accept.split(",");
-
-        for (int i = 0; i < mimeTypes.length; ++i) {
-            if (mimeTypes[i].trim().equalsIgnoreCase("text/html")) {
-                return true;
-            }
-            if (mimeTypes[i].trim().equalsIgnoreCase("application/xhtml+xml")) {
-                return true;
-            }
-            if (mimeTypes[i].trim().equalsIgnoreCase("application/json")) {
-                return false;
-            }
-            if (mimeTypes[i].trim().equalsIgnoreCase("text/javascript")) {
-                return false;
+        MediaPreference html = new MediaPreference(0, -1, Integer.MAX_VALUE);
+        MediaPreference json = html;
+        final String[] ranges = accept.split(",");
+        for (int index = 0; index < ranges.length; index++) {
+            final String[] parts = ranges[index].split(";", -1);
+            final String mimeType = parts[0].strip().toLowerCase(Locale.ROOT);
+            final double quality = qualityValue(parts);
+            switch (mimeType) {
+                case "text/html", "application/xhtml+xml" -> html = html.prefer(quality, 2, index);
+                case "application/json", "text/javascript" -> json = json.prefer(quality, 2, index);
+                case "text/*" -> html = html.prefer(quality, 1, index);
+                case "application/*" -> json = json.prefer(quality, 1, index);
+                case "*/*" -> {
+                    html = html.prefer(quality, 0, index);
+                    json = json.prefer(quality, 0, index);
+                }
+                default -> { }
             }
         }
+        if (html.quality() == 0 && json.quality() == 0) {
+            throw new NotAcceptableResponse("Keine unterstützte Darstellung angefordert");
+        }
+        return html.quality() > json.quality() || html.quality() == json.quality()
+                && (html.specificity() > json.specificity()
+                || html.specificity() == json.specificity() && html.order() < json.order());
+    }
 
-        return false;
+    private record MediaPreference(double quality, int specificity, int order) {
+        private MediaPreference prefer(double candidateQuality, int candidateSpecificity, int candidateOrder) {
+            return candidateSpecificity > specificity || candidateSpecificity == specificity && candidateQuality > quality
+                    ? new MediaPreference(candidateQuality, candidateSpecificity, candidateOrder) : this;
+        }
+    }
+
+    private static double qualityValue(String[] mediaRange) {
+        for (int i = 1; i < mediaRange.length; i++) {
+            final String[] parameter = mediaRange[i].split("=", 2);
+            if (parameter.length == 2 && parameter[0].strip().equalsIgnoreCase("q")) {
+                try {
+                    final double quality = Double.parseDouble(parameter[1].strip());
+                    return quality >= 0 && quality <= 1 ? quality : 0;
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            }
+        }
+        return 1;
     }
 }
