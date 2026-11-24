@@ -8,6 +8,7 @@
 package de.ddb.labs.beagen;
 
 import de.ddb.labs.beagen.backend.helper.Configuration;
+import de.ddb.labs.beagen.backend.jobs.BeaconJob;
 import io.javalin.Javalin;
 import java.io.ByteArrayOutputStream;
 import java.net.BindException;
@@ -23,11 +24,15 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.quartz.JobExecutionException;
 import org.quartz.impl.SchedulerRepository;
+import org.quartz.impl.matchers.GroupMatcher;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,6 +45,7 @@ class MainTest {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final String HISTORY = "/catalog/list?type=organisation&sector=all";
     private static final String LATEST = "/catalog/list/latest?type=organisation&sector=all";
+    private static final String TRIGGER = "/catalog/trigger";
 
     private final Map<String, String> originalSettings = new LinkedHashMap<>();
     private String originalDatabaseProperty;
@@ -53,6 +59,7 @@ class MainTest {
         set("beagen.port", "0");
         set("beagen.pathprefix", "/catalog");
         set("beagen.baseurl", "http://localhost/catalog");
+        set("beagen.trigger.token", "");
         // Keep the scheduler active without contacting the live DDB API.
         set("beagen.cron", "0 0 0 1 1 ? 2099");
     }
@@ -103,6 +110,7 @@ class MainTest {
             try (var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()) {
                 final Javalin app = Main.start();
                 try {
+                    assertEquals(404, postTrigger(client, app, null).statusCode());
                     final var redirect = get(client, app, "/catalog", "text/html");
                     assertEquals(301, redirect.statusCode());
                     assertEquals(LATEST, redirect.headers().firstValue("location").orElseThrow());
@@ -157,6 +165,49 @@ class MainTest {
     }
 
     @Test
+    void authenticatedTriggerSchedulesTheExistingJobOnce() throws Exception {
+        set("beagen.trigger.token", "test-token");
+        final var started = new CountDownLatch(1);
+        final var release = new CountDownLatch(1);
+        try (var client = HttpClient.newHttpClient()) {
+            final Javalin app = Main.start();
+            try {
+                final var scheduler = SchedulerRepository.getInstance().lookupAll().iterator().next();
+                scheduler.standby();
+                final var job = scheduler.getJobKeys(GroupMatcher.anyJobGroup()).iterator().next();
+                assertEquals(BeaconJob.class, scheduler.getJobDetail(job).getJobClass());
+                // Hold the execution open for the duplicate check without calling the DDB API.
+                scheduler.setJobFactory((bundle, owner) -> context -> {
+                    started.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new JobExecutionException(e);
+                    }
+                });
+
+                final var unauthorized = postTrigger(client, app, null);
+                assertEquals(401, unauthorized.statusCode());
+                assertEquals("Bearer", unauthorized.headers().firstValue("www-authenticate").orElseThrow());
+                assertEquals(401, postTrigger(client, app, "Bearer invalid").statusCode());
+                assertEquals(1, scheduler.getTriggersOfJob(job).size());
+
+                assertEquals(202, postTrigger(client, app, "Bearer test-token").statusCode());
+                assertEquals(409, postTrigger(client, app, "Bearer test-token").statusCode());
+                assertEquals(2, scheduler.getTriggersOfJob(job).size());
+
+                scheduler.start();
+                assertTrue(started.await(10, TimeUnit.SECONDS), "Quartz must execute the manual trigger");
+                assertEquals(409, postTrigger(client, app, "Bearer test-token").statusCode());
+            } finally {
+                release.countDown();
+                app.stop();
+            }
+        }
+    }
+
+    @Test
     void failedServerStartupReleasesQuartz() throws Exception {
         try (var listener = new ServerSocket(0)) {
             set("beagen.port", Integer.toString(listener.getLocalPort()));
@@ -186,6 +237,15 @@ class MainTest {
         final var request = HttpRequest.newBuilder(uri(app, path)).header("Accept", accept)
                 .timeout(Duration.ofSeconds(10)).GET().build();
         return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpResponse<String> postTrigger(HttpClient client, Javalin app, String authorization) throws Exception {
+        final var request = HttpRequest.newBuilder(uri(app, TRIGGER)).timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.noBody());
+        if (authorization != null) {
+            request.header("Authorization", authorization);
+        }
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private static URI uri(Javalin app, String path) {

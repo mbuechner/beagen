@@ -7,6 +7,7 @@
     <meta name="description" content="Beagen – BEACON-Datei-Generator der Deutschen Digitalen Bibliothek">
     <meta name="theme-color" content="#0d6efd">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/spacelab/bootstrap.min.css" integrity="sha256-DJuTtrnkM7UA6ptLT9fJumXkYY5NovkL55ITeigpSsI=" crossorigin="anonymous">
     <title>Beagen - Ein BEACON-Datei-Generator für die Deutsche Digitale Bibliothek</title>
   </head>
   <body>
@@ -75,8 +76,7 @@
         </div>
       </div>
     </main>
-    <template id="optionalAssets">
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/spacelab/bootstrap.min.css" integrity="sha256-DJuTtrnkM7UA6ptLT9fJumXkYY5NovkL55ITeigpSsI=" crossorigin="anonymous">
+    <template id="chartAssets">
       <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.2/dist/chart.umd.min.js" integrity="sha256-PyiPTyaILCa1iTH7WGqbTzA3C13jjWncAFsL0FsI4RM=" crossorigin="anonymous"></script>
     </template>
     <script>
@@ -91,7 +91,7 @@
         const showButton = document.getElementById("showBtn");
         const status = document.getElementById("listStatus");
         const table = document.getElementById("beaconTable");
-        const optionalAssets = document.getElementById("optionalAssets").content;
+        const chartAssets = document.getElementById("chartAssets").content;
         const sortButtons = Array.from(table.querySelectorAll("thead button"));
         const columns = [
           entry => entry.type?.name ?? "",
@@ -217,7 +217,7 @@
         }
 
         function loadChart() {
-          const source = optionalAssets.querySelector("script");
+          const source = chartAssets.querySelector("script");
           const script = document.createElement("script");
           script.src = source.src;
           script.integrity = source.integrity;
@@ -266,8 +266,6 @@
             showAlert("Die BEACON-Dateien konnten nicht geladen werden. " + error.message);
           } finally {
             status.textContent = "";
-            // Load the optional theme after rendering so CDN latency cannot delay the table.
-            document.head.append(optionalAssets.querySelector("link").cloneNode(true));
           }
         }
 

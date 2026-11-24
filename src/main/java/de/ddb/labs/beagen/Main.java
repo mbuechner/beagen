@@ -29,21 +29,28 @@ import io.javalin.compression.CompressionStrategy;
 import io.javalin.compression.Gzip;
 import io.javalin.config.RoutesConfig;
 import io.javalin.http.BadRequestResponse;
+import io.javalin.http.ConflictResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Header;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.NotAcceptableResponse;
 import io.javalin.http.NotFoundResponse;
 import io.javalin.json.JavalinJackson3;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
+import org.quartz.JobKey;
+import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 
 /**
@@ -61,6 +68,8 @@ public class Main {
     private static final String BEAGEN_PORT = "beagen.port";
     private static final String BEAGEN_PATHPREFIX = "beagen.pathprefix";
     private static final String BEAGEN_CRON = "beagen.cron";
+    private static final String BEAGEN_TRIGGER_TOKEN = "beagen.trigger.token";
+    private static final TriggerKey MANUAL_TRIGGER = TriggerKey.triggerKey("manualtrigger", "crongroup");
 
     /**
      * Applies environment overrides, starts the application, and registers its shutdown hook.
@@ -69,7 +78,8 @@ public class Main {
      * @throws Exception if the configuration cannot be loaded or the application cannot start
      */
     public static void main(String[] args) throws Exception {
-        for (String key : List.of(BEAGEN_DATABASE, BEAGEN_BASEURL, BEAGEN_PATHPREFIX, BEAGEN_PORT, BEAGEN_CRON)) {
+        for (String key : List.of(BEAGEN_DATABASE, BEAGEN_BASEURL, BEAGEN_PATHPREFIX, BEAGEN_PORT, BEAGEN_CRON,
+                BEAGEN_TRIGGER_TOKEN)) {
             final String override = System.getenv(key);
             if (override != null) {
                 Configuration.setValue(key, override);
@@ -94,6 +104,7 @@ public class Main {
         final int port = Integer.parseInt(Configuration.getValue(BEAGEN_PORT));
         final String pathPrefix = Configuration.getValue(BEAGEN_PATHPREFIX);
         final String cron = Configuration.getValue(BEAGEN_CRON);
+        final String triggerToken = Configuration.getValue(BEAGEN_TRIGGER_TOKEN);
         final var schedule = CronScheduleBuilder.cronSchedule(cron);
 
         System.out.println(BEAGEN_DATABASE + "=" + database.split(";", 2)[0]);
@@ -134,6 +145,10 @@ public class Main {
                 config.events.serverStopped(entityManagerUtil::shutdown);
                 config.events.serverStopFailed(entityManagerUtil::shutdown);
                 registerRoutes(config.routes, pathPrefix, responseCache);
+                if (triggerToken != null && !triggerToken.isBlank()) {
+                    final byte[] token = triggerToken.getBytes(StandardCharsets.UTF_8);
+                    config.routes.post(pathPrefix + "/trigger", ctx -> triggerImport(ctx, jobScheduler, job.getKey(), token));
+                }
             });
             BeaconFileController.deleteEmptyBeaconFiles();
             app.start();
@@ -162,6 +177,25 @@ public class Main {
             }
             throw startupFailure;
         }
+    }
+
+    private static void triggerImport(Context ctx, Scheduler scheduler, JobKey jobKey, byte[] token)
+            throws SchedulerException {
+        final String authorization = ctx.header(Header.AUTHORIZATION);
+        final String scheme = "Bearer ";
+        if (authorization == null || !authorization.regionMatches(true, 0, scheme, 0, scheme.length())
+                || !MessageDigest.isEqual(token, authorization.substring(scheme.length()).getBytes(StandardCharsets.UTF_8))) {
+            ctx.header(Header.WWW_AUTHENTICATE, "Bearer").status(HttpStatus.UNAUTHORIZED);
+            return;
+        }
+
+        // Quartz retains the one-shot trigger key until the import finishes.
+        try {
+            scheduler.scheduleJob(TriggerBuilder.newTrigger().withIdentity(MANUAL_TRIGGER).forJob(jobKey).startNow().build());
+        } catch (ObjectAlreadyExistsException e) {
+            throw new ConflictResponse("Ein manuell gestarteter BEACON-Import ist bereits eingeplant oder läuft.");
+        }
+        ctx.status(HttpStatus.ACCEPTED);
     }
 
     private static void registerRoutes(RoutesConfig routes, String pathPrefix, ResponseCache responseCache) {

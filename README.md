@@ -1,36 +1,29 @@
 # Beagen
 
-[Deutsche Digitale Bibliothek](https://www.deutsche-digitale-bibliothek.de/) → Quartz import → gzip BEACON files in H2 → Javalin downloads and HTML/JSON history. [Live](https://labs.ddb.de/app/beagen)
+Deutsche Digitale Bibliothek → Quartz → gzip BEACON in H2 → downloads + HTML/JSON history. [Live](https://labs.ddb.de/app/beagen)
 
 ## Run
 
 ```sh
-docker run --rm -p 8080:8080 -v beagen:/home/beagen/files \
-  ghcr.io/mbuechner/beagen:latest
+docker run --rm -p 8080:8080 -v beagen:/home/beagen/files ghcr.io/mbuechner/beagen:latest
 ```
 
-Open `http://localhost:8080/`. The volume persists H2 across container replacements. An existing H2 file belongs in the `database/` subdirectory of the volume. The container user needs write access to that directory and the database file.
+Open `http://localhost:8080/`. H2 lives in `database/` on the volume. Give the container write access.
 
-Use Java 25 for local development. The Maven Wrapper uses Maven 3.10.2.
+Build with Java 25 and `./mvnw clean verify` (`.\mvnw.cmd clean verify` on Windows). Start with `java -jar target/beagen.jar`.
+
+Override runtime settings via environment variables. Behind a proxy, set `beagen.baseurl` to the public URL and `beagen.pathprefix` to the forwarded prefix. [Defaults](src/main/resources/beagen.cfg)
+
+## Trigger an import
+
+Set `beagen.trigger.token` on the server and restart. Set `BEAGEN_TRIGGER_TOKEN` to the same secret in the caller's shell. Include `beagen.pathprefix` in the URL if configured.
 
 ```sh
-./mvnw clean verify && java -jar target/beagen.jar
+curl --fail-with-body -X POST -H "Authorization: Bearer $BEAGEN_TRIGGER_TOKEN" http://localhost:8080/trigger
 ```
 
-Run `.\mvnw.cmd clean verify` before starting the JAR on Windows. An installed Maven 3.9 or later works too.
+`202` full import queued · `401` missing or invalid token · `409` manual import already queued or running. An empty server token disables the route.
 
-See [defaults](src/main/resources/beagen.cfg) for `beagen.port`, `beagen.cron` and `beagen.database`. Behind a reverse proxy, set `beagen.baseurl` to the public URL and `beagen.pathprefix` to the forwarded prefix. Set all five via environment variables.
+## Deploy
 
-## From release to OpenShift
-
-1. PRs run `mvn verify`. Dependabot groups Maven minor and patch updates. Publishing a stable GitHub Release queues its versioned container build on `master`. Tag a commit that contains the release trigger.
-2. At **08:17 Europe/Berlin**, CI checks the release and its Linux/amd64 base image digests, including `amazoncorretto:25`. It rebuilds when the inputs change and scans the image and its Maven SBOM each day. The [container check](.github/actions/check-container/action.yml) requests the JSON list as a non-root user.
-3. GHCR updates the version tag after verification and signing. For the maintained release, the same run also updates `latest` and `tagged`. Point OpenShift's periodic import at a version tag to keep that application version while picking up Java and OS updates.
-
-CI maintains the latest stable GitHub Release by default. Set the repository variable `CONTAINER_RELEASE_TAG` to keep refreshing a specific published release after newer releases appear. For an urgent update check, run **Actions → Docker → Run workflow** on `master`. Use `release_tag` to select a specific published release.
-
-### Dependabot settings
-
-Optional auto-merge uses `DEPENDABOT_AUTO_MERGE=true`, squash merges and the required **Maven verify** check on `master`. Remove **Container verification** from existing required checks.
-
-For Critical-only security PRs, keep Dependabot alerts on, turn broad security updates off and [set an auto-triage rule](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/auto-triage-dependabot-alerts) to open PRs for Critical alerts with a fix. Filter email using `X-GitHub-Severity: critical`.
+Stable GitHub Release → signed GHCR image. Pin a version tag in OpenShift. `CONTAINER_RELEASE_TAG` selects the release CI refreshes. [Docker workflow](.github/workflows/docker-publish.yml)
